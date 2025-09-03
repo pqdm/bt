@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# CC攻击防护系统 - IP黑名单管理模块
+# 宝塔面板服务器维护工具 - IP黑名单管理模块
 
 # 黑名单文件
 BLACKLIST_FILE="/root/cc_blacklist.txt"

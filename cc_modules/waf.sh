@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# CC攻击防护系统 - Web应用防火墙模块
+# 宝塔面板服务器维护工具- Web应用防火墙模块
 
 # 创建WAF规则
 create_waf_rules() {
