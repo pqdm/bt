@@ -30,7 +30,7 @@
 
 ```bash
 # 下载脚本
-wget https://github.com/pqdm/bt-panel-monitor/raw/main/ding.sh -O /usr/local/bin/ding
+wget https://github.com/pqdm/bt/raw/main/ding.sh -O /usr/local/bin/ding
 
 # 设置执行权限
 chmod +x /usr/local/bin/ding
@@ -43,7 +43,7 @@ ding
 
 ```bash
 # 克隆仓库
-git clone https://github.com/你的用户名/bt-panel-monitor.git
+git clone https://github.com/pqdm/bt.git
 
 # 进入目录
 cd bt-panel-monitor
