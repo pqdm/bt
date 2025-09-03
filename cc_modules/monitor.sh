@@ -6,10 +6,18 @@
 monitor_system() {
     echo -e "${BLUE}【实时监控系统状态】${NC}"
     echo "=================================="
-    echo -e "${YELLOW}按 Ctrl+C 停止监控${NC}"
+    echo -e "${YELLOW}按 'q' 返回主菜单，按 Ctrl+C 停止监控${NC}"
     echo ""
     
     local update_interval=${MONITOR_INTERVAL:-5}
+    
+    # 设置非阻塞读取
+    if [ -t 0 ]; then  # 确保是在终端中运行
+        # 保存当前终端设置
+        local saved_stty=$(stty -g)
+        # 设置终端为非规范模式，无回显
+        stty -icanon -echo
+    fi
     
     while true; do
         clear
@@ -105,47 +113,94 @@ monitor_logs() {
     
     local main_log="${log_files[0]}"
     echo -e "${YELLOW}正在监控日志文件: $(basename "$main_log")${NC}"
-    echo -e "${YELLOW}按 Ctrl+C 停止监控${NC}"
+    echo -e "${YELLOW}按 'q' 返回主菜单，按 Ctrl+C 停止监控${NC}"
     
-    # 使用tail -f监控日志
-    tail -f "$main_log" | while read -r line; do
-        # 提取IP和URL
-        local ip=$(echo "$line" | awk '{print $1}')
-        local url=$(echo "$line" | awk '{print $7}')
-        local status=$(echo "$line" | awk '{print $9}')
-        local user_agent=$(echo "$line" | grep -o '"Mozilla[^"]*"')
-        
-        # 检查是否是黑名单IP
-        if is_in_blacklist "$ip"; then
-            echo -e "${RED}⚠️ 黑名单IP访问: $ip - $url (状态码: $status)${NC}"
-            continue
-        fi
-        
-        # 检查是否包含攻击特征
-        if echo "$line" | grep -q -i -E "(SELECT.*FROM|UNION.*SELECT|<script>|javascript:|\.\.\/\.\.|;.*[a-zA-Z]+)"; then
-            echo -e "${RED}⚠️ 检测到可能的攻击: $ip - $url (状态码: $status)${NC}"
-            
-            # 自动加入黑名单
-            if [ "${AUTO_BLACKLIST:-true}" = "true" ]; then
-                if ! is_in_whitelist "$ip"; then
-                    add_to_blacklist "$ip" "实时检测到攻击行为" 3600
+    # 设置非阻塞读取
+    if [ -t 0 ]; then  # 确保是在终端中运行
+        # 保存当前终端设置
+        local saved_stty=$(stty -g)
+        # 设置终端为非规范模式，无回显
+        stty -icanon -echo
+    fi
+    
+    # 使用非阻塞方式监控日志
+    local log_pos=$(wc -l < "$main_log")
+    
+    while true; do
+        # 检查是否有新行
+        local current_lines=$(wc -l < "$main_log")
+        if [ "$current_lines" -gt "$log_pos" ]; then
+            # 读取新行
+            local new_lines=$((current_lines - log_pos))
+            tail -n "$new_lines" "$main_log" | while read -r line; do
+                # 提取IP和URL
+                local ip=$(echo "$line" | awk '{print $1}')
+                local url=$(echo "$line" | awk '{print $7}')
+                local status=$(echo "$line" | awk '{print $9}')
+                local user_agent=$(echo "$line" | grep -o '"Mozilla[^"]*"')
+                
+                # 检查是否是黑名单IP
+                if is_in_blacklist "$ip"; then
+                    echo -e "${RED}⚠️ 黑名单IP访问: $ip - $url (状态码: $status)${NC}"
+                    continue
                 fi
-            fi
-        else
-            # 正常请求，显示简要信息
-            echo -e "${GREEN}[$(date +%H:%M:%S)]${NC} $ip - $url (状态码: $status)"
+                
+                # 检查是否包含攻击特征
+                if echo "$line" | grep -q -i -E "(SELECT.*FROM|UNION.*SELECT|<script>|javascript:|\.\.\/\.\.|;.*[a-zA-Z]+)"; then
+                    echo -e "${RED}⚠️ 检测到可能的攻击: $ip - $url (状态码: $status)${NC}"
+                    
+                    # 自动加入黑名单
+                    if [ "${AUTO_BLACKLIST:-true}" = "true" ]; then
+                        if ! is_in_whitelist "$ip"; then
+                            add_to_blacklist "$ip" "实时检测到攻击行为" 3600
+                        fi
+                    fi
+                else
+                    # 正常请求，显示简要信息
+                    echo -e "${GREEN}[$(date +%H:%M:%S)]${NC} $ip - $url (状态码: $status)"
+                fi
+            done
+            log_pos=$current_lines
         fi
+        
+        # 非阻塞方式检查是否有按键输入
+        if [ -t 0 ]; then  # 确保是在终端中运行
+            read -t 0.1 -n 1 key
+            if [ "$key" = "q" ]; then
+                # 恢复终端设置
+                if [ -n "$saved_stty" ]; then
+                    stty "$saved_stty"
+                fi
+                echo -e "\n${GREEN}返回主菜单...${NC}"
+                return 0
+            fi
+        fi
+        
+        sleep 1
     done
+    
+    # 恢复终端设置（以防意外退出循环）
+    if [ -t 0 ] && [ -n "$saved_stty" ]; then
+        stty "$saved_stty"
+    fi
 }
 
 # 监控CC攻击
 monitor_cc_attack() {
     echo -e "${BLUE}【监控CC攻击】${NC}"
     echo "=================================="
-    echo -e "${YELLOW}按 Ctrl+C 停止监控${NC}"
+    echo -e "${YELLOW}按 'q' 返回主菜单，按 Ctrl+C 停止监控${NC}"
     echo ""
     
     local update_interval=${MONITOR_INTERVAL:-5}
+    
+    # 设置非阻塞读取
+    if [ -t 0 ]; then  # 确保是在终端中运行
+        # 保存当前终端设置
+        local saved_stty=$(stty -g)
+        # 设置终端为非规范模式，无回显
+        stty -icanon -echo
+    fi
     
     while true; do
         clear
@@ -212,18 +267,44 @@ monitor_cc_attack() {
             fi
         fi
         
+        # 非阻塞方式检查是否有按键输入
+        if [ -t 0 ]; then  # 确保是在终端中运行
+            read -t 0.1 -n 1 key
+            if [ "$key" = "q" ]; then
+                # 恢复终端设置
+                if [ -n "$saved_stty" ]; then
+                    stty "$saved_stty"
+                fi
+                echo -e "\n${GREEN}返回主菜单...${NC}"
+                return 0
+            fi
+        fi
+        
         sleep $update_interval
     done
+    
+    # 恢复终端设置（以防意外退出循环）
+    if [ -t 0 ] && [ -n "$saved_stty" ]; then
+        stty "$saved_stty"
+    fi
 }
 
 # 监控异常进程
 monitor_processes() {
     echo -e "${BLUE}【监控异常进程】${NC}"
     echo "=================================="
-    echo -e "${YELLOW}按 Ctrl+C 停止监控${NC}"
+    echo -e "${YELLOW}按 'q' 返回主菜单，按 Ctrl+C 停止监控${NC}"
     echo ""
     
     local update_interval=${MONITOR_INTERVAL:-5}
+    
+    # 设置非阻塞读取
+    if [ -t 0 ]; then  # 确保是在终端中运行
+        # 保存当前终端设置
+        local saved_stty=$(stty -g)
+        # 设置终端为非规范模式，无回显
+        stty -icanon -echo
+    fi
     
     while true; do
         clear
@@ -259,8 +340,26 @@ monitor_processes() {
         # 检测可疑进程
         detect_suspicious_processes
         
+        # 非阻塞方式检查是否有按键输入
+        if [ -t 0 ]; then  # 确保是在终端中运行
+            read -t 0.1 -n 1 key
+            if [ "$key" = "q" ]; then
+                # 恢复终端设置
+                if [ -n "$saved_stty" ]; then
+                    stty "$saved_stty"
+                fi
+                echo -e "\n${GREEN}返回主菜单...${NC}"
+                return 0
+            fi
+        fi
+        
         sleep $update_interval
     done
+    
+    # 恢复终端设置（以防意外退出循环）
+    if [ -t 0 ] && [ -n "$saved_stty" ]; then
+        stty "$saved_stty"
+    fi
 }
 
 # 检测可疑进程

@@ -220,11 +220,25 @@ scan_malicious_files() {
                 echo -e "${YELLOW}发现可执行文件:${NC}"
                 echo "$exec_files"
                 
+                # 将文件列表保存到数组
+                local file_array=()
+                while read -r line; do
+                    file_array+=("$line")
+                done <<< "$exec_files"
+                
                 # 检查每个可执行文件
-                echo "$exec_files" | while read file; do
+                for file in "${file_array[@]}"; do
                     echo -e "${CYAN}检查文件: $file${NC}"
                     ls -la "$file"
-                    file "$file"
+                    file_type=$(file "$file")
+                    echo "$file_type"
+                    
+                    # 添加文件类型注释
+                    if echo "$file_type" | grep -q "ELF"; then
+                        echo -e "${YELLOW}注释: 这是一个可执行程序，如果您不认识它，可能是恶意程序${NC}"
+                    elif echo "$file_type" | grep -q "script"; then
+                        echo -e "${YELLOW}注释: 这是一个脚本文件，可能用于自动化任务或恶意活动${NC}"
+                    fi
                     
                     # 提示是否删除文件
                     echo -ne "${YELLOW}是否删除此文件? (y/n): ${NC}"
@@ -249,11 +263,27 @@ scan_malicious_files() {
                 echo -e "${YELLOW}发现隐藏文件:${NC}"
                 echo "$hidden_files"
                 
+                # 将文件列表保存到数组
+                local file_array=()
+                while read -r line; do
+                    file_array+=("$line")
+                done <<< "$hidden_files"
+                
                 # 检查每个隐藏文件
-                echo "$hidden_files" | while read file; do
+                for file in "${file_array[@]}"; do
                     echo -e "${CYAN}检查文件: $file${NC}"
                     ls -la "$file"
-                    file "$file"
+                    file_type=$(file "$file")
+                    echo "$file_type"
+                    
+                    # 添加文件类型注释
+                    if [[ "$file" == *".fluah_time" ]]; then
+                        echo -e "${YELLOW}注释: 这可能是挖矿程序的时间戳文件${NC}"
+                    elif [[ "$file" == *".start_task.pl" || "$file" == *".panelTask.pl" ]]; then
+                        echo -e "${YELLOW}注释: 这可能是宝塔面板的任务文件，但也可能被攻击者利用${NC}"
+                    elif echo "$file_type" | grep -q "script"; then
+                        echo -e "${YELLOW}注释: 这是一个隐藏的脚本文件，可能用于自动化任务或恶意活动${NC}"
+                    fi
                     
                     # 提示是否删除文件
                     echo -ne "${YELLOW}是否删除此文件? (y/n): ${NC}"
@@ -284,11 +314,43 @@ scan_malicious_files() {
             echo -e "${YELLOW}发现可疑文件:${NC}"
             echo "$found_files"
             
+            # 将文件列表保存到数组
+            local file_array=()
+            while read -r line; do
+                file_array+=("$line")
+            done <<< "$found_files"
+            
             # 检查每个可疑文件
-            echo "$found_files" | while read file; do
+            for file in "${file_array[@]}"; do
                 echo -e "${CYAN}检查文件: $file${NC}"
                 ls -la "$file"
-                file "$file"
+                file_type=$(file "$file")
+                echo "$file_type"
+                
+                # 添加文件类型注释
+                if [[ "$pattern" == "backdoor" ]]; then
+                    if [[ "$file" == *"/gevent/backdoor.py" || "$file" == *"/test__backdoor.py" ]]; then
+                        echo -e "${YELLOW}注释: 这是Python的gevent库的合法组件，用于远程调试${NC}"
+                    elif [[ "$file" == *"icon-backdoor.svg" ]]; then
+                        echo -e "${YELLOW}注释: 这是宝塔面板的图标文件，用于UI显示${NC}"
+                    elif [[ "$file" == *"sw_php_backdoor.py" || "$file" == *"sw_strace_backdoor.py" ]]; then
+                        echo -e "${YELLOW}注释: 这是宝塔面板的安全检测组件，用于检测PHP后门${NC}"
+                    elif [[ "$file" == *"sw_php_backdoor.pl" || "$file" == *"sw_strace_backdoor.pl" ]]; then
+                        echo -e "${YELLOW}注释: 这是宝塔面板的安全检测结果文件${NC}"
+                    fi
+                elif [[ "$pattern" == "rootkit" ]]; then
+                    if [[ "$file" == *"icon-rootkit.svg" ]]; then
+                        echo -e "${YELLOW}注释: 这是宝塔面板的图标文件，用于UI显示${NC}"
+                    fi
+                elif [[ "$pattern" == "kthread" ]]; then
+                    if [[ "$file" == *"/include/linux/kthread.h" ]]; then
+                        echo -e "${YELLOW}注释: 这是Linux内核的合法头文件，用于线程管理${NC}"
+                    fi
+                elif echo "$file_type" | grep -q "ELF"; then
+                    echo -e "${YELLOW}注释: 这是一个可执行程序，如果您不认识它，可能是恶意程序${NC}"
+                elif echo "$file_type" | grep -q "script"; then
+                    echo -e "${YELLOW}注释: 这是一个脚本文件，可能用于自动化任务或恶意活动${NC}"
+                fi
                 
                 # 提示是否删除文件
                 echo -ne "${YELLOW}是否删除此文件? (y/n): ${NC}"
@@ -314,10 +376,26 @@ scan_malicious_files() {
     
     if [ -n "$large_files" ]; then
         echo -e "${YELLOW}发现大文件:${NC}"
-        echo "$large_files" | while read file; do
+        
+        # 将文件列表保存到数组
+        local file_array=()
+        while read -r line; do
+            file_array+=("$line")
+        done <<< "$large_files"
+        
+        # 检查每个大文件
+        for file in "${file_array[@]}"; do
             echo -e "${CYAN}文件: $file ($(du -h "$file" | awk '{print $1}'))${NC}"
             ls -la "$file"
-            file "$file"
+            file_type=$(file "$file")
+            echo "$file_type"
+            
+            # 添加文件类型注释
+            if echo "$file_type" | grep -q "ELF"; then
+                echo -e "${YELLOW}注释: 这是一个异常大小的可执行文件，可能是恶意程序${NC}"
+            elif echo "$file_type" | grep -q "data"; then
+                echo -e "${YELLOW}注释: 这是一个异常大小的数据文件，可能是恶意程序的数据或挖矿程序的钱包${NC}"
+            fi
             
             # 提示是否删除文件
             echo -ne "${YELLOW}是否删除此文件? (y/n): ${NC}"
