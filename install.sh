@@ -33,6 +33,7 @@ wget https://github.com/pqdm/bt/raw/main/cc_modules/firewall.sh -O /root/cc_modu
 wget https://github.com/pqdm/bt/raw/main/cc_modules/monitor.sh -O /root/cc_modules/monitor.sh
 wget https://github.com/pqdm/bt/raw/main/cc_modules/optimizer.sh -O /root/cc_modules/optimizer.sh
 wget https://github.com/pqdm/bt/raw/main/cc_modules/waf.sh -O /root/cc_modules/waf.sh
+wget https://github.com/pqdm/bt/raw/main/cc_modules/updater.sh -O /root/cc_modules/updater.sh
 
 # 设置执行权限
 echo -e "${YELLOW}设置执行权限...${NC}"

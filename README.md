@@ -1,193 +1,170 @@
-# 宝塔面板服务器安全监控脚本
+# 宝塔面板服务器维护工具
 
-一个功能强大的宝塔面板服务器安全监控工具，支持实时监控、自动修复CC攻击、清理可疑进程等功能。专为宝塔面板服务器环境设计，提供全方位的安全监控和自动修复能力。
+## 简介
+这是一个专为宝塔面板设计的服务器维护工具，可以帮助您保护您的Web服务器免受CC攻击并进行系统维护。
 
-## 🚀 功能特点
+作者: 咸鱼神秘人  
+微信: dingyanan2008  
+QQ: 314450957
 
-- **实时监控模式**：动态显示CPU、内存、网络连接等关键指标
-- **自动修复CC攻击**：检测并自动处理CC攻击，清理异常连接
-- **可疑进程清理**：自动检测和清理挖矿等可疑进程
-- **CPU/内存占用优化**：针对高负载情况提供自动优化方案
-- **PHP-FPM配置优化**：自动调整PHP-FPM进程数，优化性能
-- **邮件告警功能**：关键指标异常时自动发送邮件告警
-- **定时任务管理**：支持设置定时监控、备份、清理任务
-- **一键安全加固**：提供服务器安全加固功能
-- **日志分析功能**：分析访问日志，发现异常请求
-- **自动备份功能**：备份关键配置文件
-- **系统恢复功能**：一键重启所有服务，恢复系统状态
-- **性能优化建议**：根据服务器状态提供专业优化建议
+## 功能特点
+- 实时监控系统状态
+- 分析Web访问日志
+- 检测和防御CC攻击
+- 监控异常进程
+- 管理黑名单和白名单
+- 设置防火墙规则
+- 设置WAF规则
+- 优化系统参数
+- 一键安全加固
+- 恶意文件清理
 
-## 📋 系统要求
+## 安装方法
 
-- Linux服务器（CentOS/RHEL/Ubuntu/Debian等）
-- 宝塔面板环境
-- root权限
-- 基本工具：bc, netstat, ps, top等
-
-## 🔧 安装方法
-
-### 方法一：直接下载
+### 方法一：一键安装（推荐）
 
 ```bash
-# 下载脚本
-wget https://github.com/pqdm/bt/raw/main/ding.sh -O /usr/local/bin/ding
+# 下载安装脚本
+wget https://github.com/pqdm/bt/raw/main/install.sh -O install.sh
 
 # 设置执行权限
+chmod +x install.sh
+
+# 运行安装脚本
+./install.sh
+```
+
+### 方法二：手动安装
+
+```bash
+# 创建必要的目录
+mkdir -p /root/cc_modules
+
+# 下载主脚本
+wget https://github.com/pqdm/bt/raw/main/ding.sh -O /usr/local/bin/ding
 chmod +x /usr/local/bin/ding
 
-# 运行脚本
-ding
-```
+# 创建软链接
+ln -sf /usr/local/bin/ding /root/cc_defense.sh
 
-### 方法二：克隆仓库
+# 下载配置文件
+wget https://github.com/pqdm/bt/raw/main/cc_config.conf -O /root/cc_config.conf
 
-```bash
-# 克隆仓库
-git clone https://github.com/pqdm/bt.git
-
-# 进入目录
-cd bt-panel-monitor
+# 下载模块文件
+wget https://github.com/pqdm/bt/raw/main/cc_modules/analyzer.sh -O /root/cc_modules/analyzer.sh
+wget https://github.com/pqdm/bt/raw/main/cc_modules/blacklist.sh -O /root/cc_modules/blacklist.sh
+wget https://github.com/pqdm/bt/raw/main/cc_modules/cleaner.sh -O /root/cc_modules/cleaner.sh
+wget https://github.com/pqdm/bt/raw/main/cc_modules/firewall.sh -O /root/cc_modules/firewall.sh
+wget https://github.com/pqdm/bt/raw/main/cc_modules/monitor.sh -O /root/cc_modules/monitor.sh
+wget https://github.com/pqdm/bt/raw/main/cc_modules/optimizer.sh -O /root/cc_modules/optimizer.sh
+wget https://github.com/pqdm/bt/raw/main/cc_modules/waf.sh -O /root/cc_modules/waf.sh
 
 # 设置执行权限
-chmod +x ding.sh
+chmod +x /root/cc_modules/*.sh
 
-# 创建软链接(可选)
-ln -s $(pwd)/ding.sh /usr/local/bin/ding
+# 创建黑白名单文件
+touch /root/cc_blacklist.txt
+touch /root/cc_whitelist.txt
+```
 
-# 运行脚本
-./ding.sh
-# 或者
+## 使用方法
+
+安装完成后，您可以通过以下命令启动系统：
+
+```bash
 ding
 ```
 
-## 📊 使用指南
+在主菜单中，您可以选择不同的功能：
 
-运行脚本后，会显示一个交互式菜单，选择对应的功能即可：
+1. 实时监控系统
+2. 分析Web访问日志
+3. 监控CC攻击
+4. 监控异常进程
+5. 检测系统异常
+6. 查看黑名单
+7. 管理黑名单
+8. 设置防火墙规则
+9. 设置WAF规则
+10. 优化系统参数
+11. 一键安全加固
+12. 查看系统信息
+13. 配置选项
+14. 恶意文件清理
+15. 关于
+16. 检查更新
+17. 卸载工具
+0. 退出
 
-```
-╔══════════════════════════════════════════════════════════════╗
-║                宝塔面板服务器安全监控系统                    ║
-║              BT Panel Security Monitor                      ║
-║                    完整增强版 - 专业版                       ║
-║                                                              ║
-║  作者: 咸鱼神秘人 | 微信: dingyanan2008 | QQ: 314450957      ║
-╚══════════════════════════════════════════════════════════════╝
-
-请选择要执行的操作:
-1. 快速安全检查 (推荐)
-2. 详细安全检查
-3. 实时监控模式
-4. 自动修复所有问题
-5. 性能优化建议
-6. 一键安全加固
-7. 系统资源限制
-8. 定时任务管理
-9. 邮件告警配置
-10. 日志分析
-11. 自动备份配置
-12. 系统恢复
-13. 生成安全报告
-14. 查看监控日志
-15. 清理日志文件
-16. 退出
-
-请输入选项 (1-16):
-```
-
-### 主要功能详解
-
-#### 1. 快速安全检查
-执行基本的系统检查，包括CPU、内存、网络连接、可疑进程和宝塔服务状态检查。
-
-#### 2. 详细安全检查
-执行全面的系统检查，包括所有基本检查项目，以及Web服务器、数据库、系统负载、磁盘使用率和防火墙状态检查。
-
-#### 3. 实时监控模式
-实时显示系统关键指标，包括CPU使用率、内存使用率、网络连接数等，每3秒更新一次。
-
-#### 4. 自动修复所有问题
-自动检测并修复系统中的问题，包括高CPU使用率、内存占用过高、CC攻击和可疑进程。
-
-#### 5. 性能优化建议
-根据系统当前状态提供针对性的性能优化建议。
-
-#### 6. 一键安全加固
-提供服务器安全加固功能，包括设置SSH安全、防火墙规则、文件权限等。
-
-#### 7. 系统资源限制
-设置系统资源限制，优化TCP参数，提高服务器性能和安全性。
-
-#### 8. 定时任务管理
-管理监控相关的定时任务，可以设置定时监控、备份和清理任务。
-
-#### 9. 邮件告警配置
-配置邮件告警功能，当系统出现异常时自动发送告警邮件。
-
-#### 10. 日志分析
-分析Web服务器访问日志，发现异常请求和访问模式。
-
-## 🔄 定时任务
-
-你可以设置以下定时任务来自动化监控和维护：
+或者使用命令行参数：
 
 ```bash
-# 每5分钟检查一次系统状态
-*/5 * * * * /usr/local/bin/ding --cron-check
+# 显示帮助信息
+ding --help
 
-# 每天凌晨2点备份配置
-0 2 * * * /usr/local/bin/ding --auto-backup
+# 实时监控系统
+ding --monitor
 
-# 每周日凌晨3点清理日志
-0 3 * * 0 /usr/local/bin/ding --clean-logs
+# 分析Web访问日志
+ding --analyze
+
+# 查看黑名单
+ding --blacklist
+
+# 设置防火墙规则
+ding --firewall
+
+# 设置WAF规则
+ding --waf
+
+# 优化系统参数
+ding --optimize
+
+# 一键安全加固
+ding --hardening
+
+# 清理防火墙规则
+ding --clean-firewall
+
+# 检查更新
+ding --update
 ```
 
-## 📝 常见问题
+## 卸载方法
 
-**问题: 脚本需要什么权限？**  
-答: 脚本需要root权限才能正常运行所有功能。
+如果您需要卸载宝塔面板服务器维护工具，可以使用以下命令：
 
-**问题: 如何配置邮件告警？**  
-答: 在主菜单中选择"9. 邮件告警配置"，按提示输入邮箱地址、SMTP服务器和密码即可。
+```bash
+# 下载卸载脚本
+wget https://github.com/pqdm/bt/raw/main/uninstall.sh -O uninstall.sh
 
-**问题: 脚本会自动修改哪些系统配置？**  
-答: 脚本会修改PHP-FPM配置、系统资源限制和TCP参数等，但所有修改前都会进行备份。
+# 设置执行权限
+chmod +x uninstall.sh
 
-**问题: 如何卸载脚本？**  
-答: 只需删除脚本文件即可，脚本不会在系统中安装其他组件。
+# 运行卸载脚本
+./uninstall.sh
+```
 
-## 🛡️ 安全说明
+卸载脚本会自动清理防火墙规则、删除所有相关文件和配置。
 
-- 脚本包含一些系统级别的操作，请在使用前仔细阅读代码
-- 建议在测试环境中先测试脚本功能，确认无误后再在生产环境使用
-- 使用"一键安全加固"功能前请注意备份重要数据和配置
+## 配置说明
 
-## 📋 更新日志
+配置文件位于 `/root/cc_config.conf`，您可以根据需要修改配置参数。
 
-### v1.0.0 (2025-09-03)
-- 初始版本发布
-- 实现基本监控和修复功能
+## 注意事项
 
-### v1.0.0 (2025-09-03)
-- 添加实时监控模式
-- 优化自动修复功能
-- 添加邮件告警功能
-- 
-### v1.0.0 (2025-09-03)
-- 添加日志分析功能
-- 添加定时任务管理
-- 优化性能建议功能
+1. 本系统需要root权限运行
+2. 建议在使用前备份重要数据
+3. 本系统仅供学习和研究使用，请勿用于非法用途
 
-## 👨‍💻 作者
+## 更新日志
 
-**咸鱼神秘人**
-- 微信: dingyanan2008
-- QQ: 314450957
-- GitHub: (https://github.com/pqdm)
+### v2.0.0
+- 全新的界面设计
+- 增加了更多的防护功能
+- 优化了系统性能
+- 增加了恶意文件清理功能
 
-## 🌟 致谢
+## 许可证
 
-感谢所有为本项目提供建议和反馈的用户！
-
----
-
-如果你觉得这个工具有用，请给它一个星标 ⭐ 支持我们！
+本项目采用 MIT 许可证

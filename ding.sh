@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# CC攻击防护系统 - 主模块
+# 宝塔面板服务器维护工具 - 主模块
 # 作者: 咸鱼神秘人
 # 版本: 2.0.0
 # 联系方式: 微信dingyanan2008 QQ314450957
@@ -45,8 +45,8 @@ log_message() {
 show_header() {
     clear
     echo -e "${CYAN}╔══════════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${CYAN}║                   CC攻击防护系统 v$VERSION                   ║${NC}"
-    echo -e "${CYAN}║                 CC Attack Defense System                     ║${NC}"
+    echo -e "${CYAN}║               宝塔面板服务器维护工具 v$VERSION               ║${NC}"
+    echo -e "${CYAN}║            BT Panel Server Maintenance Tool                  ║${NC}"
     echo -e "${CYAN}║                                                              ║${NC}"
     echo -e "${CYAN}║  作者: 咸鱼神秘人                                            ║${NC}"
     echo -e "${CYAN}║  微信: dingyanan2008                                         ║${NC}"
@@ -73,7 +73,10 @@ show_menu() {
     echo -e "${CYAN}11.${NC} 一键安全加固"
     echo -e "${CYAN}12.${NC} 查看系统信息"
     echo -e "${CYAN}13.${NC} 配置选项"
-    echo -e "${CYAN}14.${NC} 关于"
+    echo -e "${CYAN}14.${NC} 恶意文件清理"
+    echo -e "${CYAN}15.${NC} 关于"
+    echo -e "${CYAN}16.${NC} 检查更新"
+    echo -e "${CYAN}17.${NC} 卸载工具"
     echo -e "${CYAN}0.${NC} 退出"
     echo "=================================="
     echo -ne "${YELLOW}请输入选择: ${NC}"
@@ -133,6 +136,22 @@ load_modules() {
     else
         echo -e "${RED}错误: 监控模块不存在 $MODULES_DIR/monitor.sh${NC}"
         exit 1
+    fi
+    
+    # 加载清理模块
+    if [ -f "$MODULES_DIR/cleaner.sh" ]; then
+        source "$MODULES_DIR/cleaner.sh"
+    else
+        echo -e "${RED}错误: 清理模块不存在 $MODULES_DIR/cleaner.sh${NC}"
+        exit 1
+    fi
+    
+    # 加载更新模块
+    if [ -f "$MODULES_DIR/updater.sh" ]; then
+        source "$MODULES_DIR/updater.sh"
+    else
+        echo -e "${YELLOW}警告: 更新模块不存在 $MODULES_DIR/updater.sh${NC}"
+        # 不退出，因为更新模块不是必需的
     fi
 }
 
@@ -259,14 +278,78 @@ handle_menu() {
             config_menu
             ;;
         14)
+            # 恶意文件清理
+            malware_menu
+            ;;
+        15)
             # 关于
             show_about
             echo -e "${YELLOW}按任意键继续...${NC}"
             read -n 1
             ;;
+        16)
+            # 检查更新
+            if type check_update &>/dev/null; then
+                check_update
+            else
+                echo -e "${RED}错误: 更新模块未加载${NC}"
+            fi
+            echo -e "${YELLOW}按任意键继续...${NC}"
+            read -n 1
+            ;;
+        17)
+            # 卸载工具
+            echo -e "${YELLOW}确定要卸载宝塔面板服务器维护工具吗? (y/n): ${NC}"
+            read confirm
+            if [[ "$confirm" == "y" || "$confirm" == "Y" ]]; then
+                echo -e "${YELLOW}开始卸载...${NC}"
+                
+                # 清理防火墙规则
+                clean_firewall_rules
+                
+                # 删除自启动服务
+                if [ -f "/etc/systemd/system/cc-firewall.service" ]; then
+                    systemctl disable cc-firewall.service 2>/dev/null
+                    systemctl stop cc-firewall.service 2>/dev/null
+                    rm -f /etc/systemd/system/cc-firewall.service
+                    systemctl daemon-reload
+                fi
+                
+                if [ -f "/etc/init.d/cc-firewall" ]; then
+                    if command -v chkconfig &> /dev/null; then
+                        chkconfig cc-firewall off
+                        chkconfig --del cc-firewall
+                    elif command -v update-rc.d &> /dev/null; then
+                        update-rc.d -f cc-firewall remove
+                    fi
+                    rm -f /etc/init.d/cc-firewall
+                fi
+                
+                # 删除配置文件和模块文件
+                rm -f /root/cc_config.conf
+                rm -f /root/cc_blacklist.txt
+                rm -f /root/cc_whitelist.txt
+                rm -rf /root/cc_modules
+                rm -f /var/log/cc_defense.log
+                
+                # 删除主脚本前显示成功信息
+                echo -e "${GREEN}宝塔面板服务器维护工具已成功卸载!${NC}"
+                
+                # 删除自身
+                rm -f /usr/local/bin/ding
+                rm -f /root/cc_defense.sh
+                
+                # 退出
+                exit 0
+            else
+                echo -e "${YELLOW}取消卸载操作${NC}"
+                echo -e "${YELLOW}按任意键继续...${NC}"
+                read -n 1
+            fi
+            ;;
         0)
             # 退出
-            echo -e "${GREEN}感谢使用CC攻击防护系统，再见！${NC}"
+            echo -e "${GREEN}感谢使用宝塔面板服务器维护工具，再见！${NC}"
             exit 0
             ;;
         *)
@@ -702,16 +785,72 @@ show_system_info() {
     return 0
 }
 
+# 恶意文件清理菜单
+malware_menu() {
+    while true; do
+        show_header
+        echo -e "${BLUE}【恶意文件清理】${NC}"
+        echo "=================================="
+        echo -e "${CYAN}1.${NC} 定位恶意进程文件"
+        echo -e "${CYAN}2.${NC} 扫描系统恶意文件"
+        echo -e "${CYAN}3.${NC} 检查启动项"
+        echo -e "${CYAN}4.${NC} 检查定时任务"
+        echo -e "${CYAN}5.${NC} 检查Web目录恶意文件"
+        echo -e "${CYAN}0.${NC} 返回主菜单"
+        echo "=================================="
+        echo -ne "${YELLOW}请输入选择: ${NC}"
+        
+        read choice
+        
+        case $choice in
+            1)
+                echo -ne "${YELLOW}请输入要检查的进程PID: ${NC}"
+                read pid
+                locate_malicious_files "$pid"
+                echo -e "${YELLOW}按任意键继续...${NC}"
+                read -n 1
+                ;;
+            2)
+                scan_malicious_files
+                echo -e "${YELLOW}按任意键继续...${NC}"
+                read -n 1
+                ;;
+            3)
+                check_startup_entries
+                echo -e "${YELLOW}按任意键继续...${NC}"
+                read -n 1
+                ;;
+            4)
+                check_cron_jobs
+                echo -e "${YELLOW}按任意键继续...${NC}"
+                read -n 1
+                ;;
+            5)
+                check_web_malware
+                echo -e "${YELLOW}按任意键继续...${NC}"
+                read -n 1
+                ;;
+            0)
+                return
+                ;;
+            *)
+                echo -e "${RED}错误: 无效的选择${NC}"
+                sleep 1
+                ;;
+        esac
+    done
+}
+
 # 显示关于信息
 show_about() {
     echo -e "${BLUE}【关于】${NC}"
     echo "=================================="
-    echo -e "${CYAN}CC攻击防护系统 v$VERSION${NC}"
+    echo -e "${CYAN}宝塔面板服务器维护工具 v$VERSION${NC}"
     echo -e "${CYAN}作者: 咸鱼神秘人${NC}"
     echo -e "${CYAN}微信: dingyanan2008${NC}"
     echo -e "${CYAN}QQ: 314450957${NC}"
     echo -e "${CYAN}版权所有 © 2025${NC}"
-    echo -e "${CYAN}本程序是一个功能强大的CC攻击防护系统，用于保护Web服务器免受CC攻击。${NC}"
+    echo -e "${CYAN}本程序是一个功能强大的宝塔面板服务器维护工具，用于保护Web服务器免受CC攻击并进行系统维护。${NC}"
     echo -e "${CYAN}主要功能包括：${NC}"
     echo -e "${CYAN}1. 实时监控系统状态${NC}"
     echo -e "${CYAN}2. 分析Web访问日志${NC}"
@@ -722,6 +861,7 @@ show_about() {
     echo -e "${CYAN}7. 设置WAF规则${NC}"
     echo -e "${CYAN}8. 优化系统参数${NC}"
     echo -e "${CYAN}9. 一键安全加固${NC}"
+    echo -e "${CYAN}10. 恶意文件清理${NC}"
     echo -e "${CYAN}使用本程序前，请确保您已经了解相关风险和责任。${NC}"
     echo -e "${CYAN}本程序仅供学习和研究使用，请勿用于非法用途。${NC}"
     echo -e "${CYAN}如有任何问题或建议，请联系作者。${NC}"
@@ -737,7 +877,7 @@ handle_args() {
     
     case "$1" in
         --help|-h)
-            echo -e "${CYAN}CC攻击防护系统 v$VERSION${NC}"
+            echo -e "${CYAN}宝塔面板服务器维护工具 v$VERSION${NC}"
             echo -e "${CYAN}用法: $0 [选项]${NC}"
             echo -e "${CYAN}选项:${NC}"
             echo -e "${CYAN}  --help, -h        显示帮助信息${NC}"
@@ -749,10 +889,11 @@ handle_args() {
             echo -e "${CYAN}  --waf             设置WAF规则${NC}"
             echo -e "${CYAN}  --optimize        优化系统参数${NC}"
             echo -e "${CYAN}  --hardening       一键安全加固${NC}"
+            echo -e "${CYAN}  --update          检查更新${NC}"
             exit 0
             ;;
         --version|-v)
-            echo -e "${CYAN}CC攻击防护系统 v$VERSION${NC}"
+            echo -e "${CYAN}宝塔面板服务器维护工具 v$VERSION${NC}"
             exit 0
             ;;
         --monitor)
@@ -794,6 +935,15 @@ handle_args() {
         --hardening)
             initialize
             security_hardening
+            exit 0
+            ;;
+        --update)
+            initialize
+            if type check_update &>/dev/null; then
+                check_update
+            else
+                echo -e "${RED}错误: 更新模块未加载${NC}"
+            fi
             exit 0
             ;;
         --clean-firewall)
