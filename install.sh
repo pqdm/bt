@@ -6,7 +6,7 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
-echo -e "${GREEN}开始安装CC攻击防护系统...${NC}"
+echo -e "${GREEN}开始安装宝塔面板服务器维护工具...${NC}"
 
 # 创建必要的目录
 mkdir -p /root/cc_modules
@@ -42,5 +42,5 @@ chmod +x /root/cc_modules/*.sh
 touch /root/cc_blacklist.txt
 touch /root/cc_whitelist.txt
 
-echo -e "${GREEN}CC攻击防护系统安装完成!${NC}"
+echo -e "${GREEN}宝塔面板服务器维护工具安装完成!${NC}"
 echo -e "${GREEN}现在可以通过运行 'ding' 命令来启动系统${NC}"
