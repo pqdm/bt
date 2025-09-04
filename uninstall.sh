@@ -41,6 +41,7 @@ rm -f /root/cc_defense.sh
 # 删除配置文件
 echo -e "${YELLOW}删除配置文件...${NC}"
 rm -f /root/cc_config.conf
+rm -f /root/cc_config_bt_whitelist.conf
 rm -f /root/cc_blacklist.txt
 rm -f /root/cc_whitelist.txt
 

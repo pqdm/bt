@@ -23,6 +23,7 @@ ln -sf /usr/local/bin/ding /root/cc_defense.sh
 # 下载配置文件
 echo -e "${YELLOW}下载配置文件...${NC}"
 wget https://github.com/pqdm/bt/raw/main/cc_config.conf -O /root/cc_config.conf
+wget https://github.com/pqdm/bt/raw/main/cc_config_bt_whitelist.conf -O /root/cc_config_bt_whitelist.conf
 
 # 下载模块文件
 echo -e "${YELLOW}下载模块文件...${NC}"

@@ -74,9 +74,15 @@ show_menu() {
     echo -e "${CYAN}12.${NC} 查看系统信息"
     echo -e "${CYAN}13.${NC} 配置选项"
     echo -e "${CYAN}14.${NC} 恶意文件清理"
-    echo -e "${CYAN}15.${NC} 关于"
-    echo -e "${CYAN}16.${NC} 检查更新"
-    echo -e "${CYAN}17.${NC} 卸载工具"
+    echo -e "${CYAN}15.${NC} CPU进程清理(自动修复高CPU)"
+    echo -e "${CYAN}16.${NC} 内存进程清理(自动修复高内存)"
+    echo -e "${CYAN}17.${NC} 一键处理CC攻击"
+    echo -e "${CYAN}18.${NC} 清理可疑进程(挖矿/木马)"
+    echo -e "${CYAN}19.${NC} SSH端口安全变更"
+    echo -e "${CYAN}20.${NC} 检查SSH连接状态"
+    echo -e "${CYAN}21.${NC} 关于"
+    echo -e "${CYAN}22.${NC} 检查更新"
+    echo -e "${CYAN}23.${NC} 卸载工具"
     echo -e "${CYAN}0.${NC} 退出"
     echo "=================================="
     echo -ne "${YELLOW}请输入选择: ${NC}"
@@ -282,12 +288,72 @@ handle_menu() {
             malware_menu
             ;;
         15)
+            # CPU进程清理（调用优化模块自动修复高CPU）
+            if type fix_high_cpu &>/dev/null; then
+                fix_high_cpu
+            else
+                echo -e "${RED}错误: 优化模块未加载或不支持fix_high_cpu${NC}"
+            fi
+            echo -e "${YELLOW}按任意键继续...${NC}"
+            read -n 1
+            ;;
+        16)
+            # 内存进程清理
+            if type fix_high_memory &>/dev/null; then
+                fix_high_memory
+            else
+                echo -e "${RED}错误: 优化模块未加载或不支持fix_high_memory${NC}"
+            fi
+            echo -e "${YELLOW}按任意键继续...${NC}"
+            read -n 1
+            ;;
+        17)
+            # 一键处理CC攻击
+            if type fix_cc_attack &>/dev/null; then
+                fix_cc_attack
+            else
+                echo -e "${RED}错误: 优化模块未加载或不支持fix_cc_attack${NC}"
+            fi
+            echo -e "${YELLOW}按任意键继续...${NC}"
+            read -n 1
+            ;;
+        18)
+            # 清理可疑进程
+            if type fix_suspicious_processes &>/dev/null; then
+                fix_suspicious_processes
+            else
+                echo -e "${RED}错误: 优化模块未加载或不支持fix_suspicious_processes${NC}"
+            fi
+            echo -e "${YELLOW}按任意键继续...${NC}"
+            read -n 1
+            ;;
+        19)
+            # SSH端口安全变更
+            if type change_ssh_port_safely &>/dev/null; then
+                change_ssh_port_safely
+            else
+                echo -e "${RED}错误: 优化模块未加载或不支持change_ssh_port_safely${NC}"
+            fi
+            echo -e "${YELLOW}按任意键继续...${NC}"
+            read -n 1
+            ;;
+        20)
+            # 检查SSH连接状态
+            if type check_ssh_status &>/dev/null; then
+                check_ssh_status
+            else
+                echo -e "${RED}错误: 优化模块未加载或不支持check_ssh_status${NC}"
+            fi
+            echo -e "${YELLOW}按任意键继续...${NC}"
+            read -n 1
+            ;;
+        21)
             # 关于
             show_about
             echo -e "${YELLOW}按任意键继续...${NC}"
             read -n 1
             ;;
-        16)
+        22)
             # 检查更新
             if type check_update &>/dev/null; then
                 check_update
@@ -297,7 +363,7 @@ handle_menu() {
             echo -e "${YELLOW}按任意键继续...${NC}"
             read -n 1
             ;;
-        17)
+        23)
             # 卸载工具
             echo -e "${YELLOW}确定要卸载宝塔面板服务器维护工具吗? (y/n): ${NC}"
             read confirm
@@ -454,6 +520,7 @@ firewall_menu() {
         echo -e "${CYAN}5.${NC} 显示防火墙规则"
         echo -e "${CYAN}6.${NC} 配置防火墙自启动"
         echo -e "${CYAN}7.${NC} 清理防火墙规则"
+        echo -e "${CYAN}8.${NC} 恢复默认防火墙规则"
         echo -e "${CYAN}0.${NC} 返回主菜单"
         echo "=================================="
         echo -ne "${YELLOW}请输入选择: ${NC}"
@@ -493,6 +560,11 @@ firewall_menu() {
                 ;;
             7)
                 clean_firewall_rules
+                echo -e "${YELLOW}按任意键继续...${NC}"
+                read -n 1
+                ;;
+            8)
+                restore_firewall_defaults
                 echo -e "${YELLOW}按任意键继续...${NC}"
                 read -n 1
                 ;;
