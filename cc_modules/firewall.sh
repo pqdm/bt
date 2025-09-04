@@ -1,6 +1,68 @@
 #!/bin/bash
 
-#宝塔面板服务器维护工具 - 防火墙配置模块
+# 宝塔面板服务器维护工具 - 防火墙配置模块
+
+# 备份当前防火墙规则
+backup_firewall_rules() {
+    echo -e "${BLUE}【备份防火墙规则】${NC}"
+    echo "=================================="
+    if command -v iptables-save &> /dev/null; then
+        local ts=$(date +%Y%m%d_%H%M%S)
+        local backup_dir="/root"
+        local backup_file="$backup_dir/iptables.backup.$ts.rules"
+        iptables-save > "$backup_file" 2>/dev/null
+        cp -f "$backup_file" "$backup_dir/iptables.backup.latest.rules" 2>/dev/null
+        echo -e "${GREEN}✅ 已备份当前防火墙规则: $backup_file${NC}"
+        log_message "FIREWALL: Rules backed up to $backup_file"
+        return 0
+    else
+        echo -e "${YELLOW}⚠️ 未找到iptables-save，跳过备份${NC}"
+        return 1
+    fi
+}
+
+# 恢复初始/默认防火墙规则
+restore_firewall_defaults() {
+    echo -e "${BLUE}【恢复默认防火墙规则】${NC}"
+    echo "=================================="
+
+    local backup_latest="/root/iptables.backup.latest.rules"
+    local restored=false
+
+    # 优先使用备份恢复
+    if command -v iptables-restore &> /dev/null && [ -f "$backup_latest" ]; then
+        if iptables-restore < "$backup_latest" 2>/dev/null; then
+            restored=true
+            echo -e "${GREEN}✅ 已从备份恢复防火墙规则${NC}"
+            log_message "FIREWALL: Restored rules from backup $backup_latest"
+        fi
+    fi
+
+    # 无备份或恢复失败，则回退为系统默认接受策略
+    if [ "$restored" != true ]; then
+        echo -e "${YELLOW}⚠️ 无可用备份或恢复失败，重置为默认开放策略${NC}"
+        # 清空所有表和自定义链
+        iptables -F 2>/dev/null
+        iptables -X 2>/dev/null
+        iptables -t nat -F 2>/dev/null
+        iptables -t nat -X 2>/dev/null
+        iptables -t mangle -F 2>/dev/null
+        iptables -t mangle -X 2>/dev/null
+        # 设置默认策略为ACCEPT
+        iptables -P INPUT ACCEPT 2>/dev/null
+        iptables -P FORWARD ACCEPT 2>/dev/null
+        iptables -P OUTPUT ACCEPT 2>/dev/null
+        echo -e "${GREEN}✅ 已重置为默认规则 (ACCEPT)${NC}"
+        log_message "FIREWALL: Reset rules to default ACCEPT policies"
+    fi
+
+    # 保存规则
+    if command -v iptables-save &> /dev/null; then
+        iptables-save > /etc/sysconfig/iptables 2>/dev/null || iptables-save > /etc/iptables/rules.v4 2>/dev/null
+    fi
+
+    return 0
+}
 
 # 设置基本防火墙规则
 setup_basic_firewall() {
@@ -13,6 +75,9 @@ setup_basic_firewall() {
         return 1
     fi
     
+    # 尝试备份当前规则
+    backup_firewall_rules
+
     # 创建新链
     iptables -N CC_DEFENSE 2>/dev/null || iptables -F CC_DEFENSE
     
@@ -71,6 +136,9 @@ setup_advanced_firewall() {
         return 1
     fi
     
+    # 尝试备份当前规则
+    backup_firewall_rules
+
     # 创建新链
     iptables -N CC_ADVANCED 2>/dev/null || iptables -F CC_ADVANCED
     
@@ -116,6 +184,9 @@ setup_cc_protection() {
         return 1
     fi
     
+    # 尝试备份当前规则
+    backup_firewall_rules
+
     # 创建新链
     iptables -N CC_PROTECT 2>/dev/null || iptables -F CC_PROTECT
     
