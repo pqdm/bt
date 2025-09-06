@@ -2,7 +2,7 @@
 
 # 宝塔面板服务器维护工具 - 主模块
 # 作者: 咸鱼神秘人
-# 版本: 2.0.0
+# 版本: 2.1.2
 # 联系方式: 微信dingyanan2008 QQ314450957
 
 # 颜色定义
@@ -74,7 +74,6 @@ show_menu() {
     echo -e "${CYAN}1.${NC} 实时监控系统                ${CYAN}4.${NC} 分析Web访问日志"
     echo -e "${CYAN}2.${NC} 检测系统异常                ${CYAN}5.${NC} 监控CC攻击"
     echo -e "${CYAN}3.${NC} 查看系统信息                ${CYAN}6.${NC} 监控异常进程"
-    echo -e "                                     ${CYAN}29.${NC} 异常IP统计"
     echo ""
     echo -e "${GREEN}▲ 安全防护                      ● 系统清理${NC}"
     echo -e "${CYAN}7.${NC} 查看黑名单                  ${CYAN}13.${NC} 恶意文件清理"
@@ -92,7 +91,7 @@ show_menu() {
     echo -e "${GREEN}◎ 系统管理${NC}"
     echo -e "${CYAN}25.${NC} 配置选项                   ${CYAN}27.${NC} 检查更新"
     echo -e "${CYAN}26.${NC} 关于                       ${CYAN}28.${NC} 卸载工具"
-    echo -e "${CYAN}0.${NC} 退出"
+    echo -e "${CYAN}29.${NC} 异常IP统计"                ${CYAN}0.${NC} 退出"
     echo "=================================================================="
     echo -ne "${YELLOW}请输入选择: ${NC}"
 }
