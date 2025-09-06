@@ -436,6 +436,40 @@ detect_suspicious_processes() {
     fi
 }
 
+# IP异常统计文件
+ANOMALY_IP_LOG="/root/anomaly_ip.log"
+
+# 记录异常IP
+record_anomaly_ip() {
+    local ip="$1"
+    local reason="$2"
+    local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+    
+    # 记录到日志文件
+    echo "${timestamp}|${ip}|${reason}" >> "$ANOMALY_IP_LOG"
+    
+    # 统计该IP的异常次数
+    local count=$(grep "|${ip}|" "$ANOMALY_IP_LOG" | wc -l)
+    
+    echo -e "${YELLOW}记录异常IP: ${ip} (原因: ${reason}) - 累计异常次数: ${count}${NC}"
+    
+    # 如果异常次数达到5次以上，自动加入黑名单
+    if [ $count -ge 5 ]; then
+        if ! is_in_whitelist "$ip" && ! is_in_blacklist "$ip"; then
+            echo -e "${RED}⚠️ IP ${ip} 异常次数达到 ${count} 次，自动加入黑名单${NC}"
+            add_to_blacklist "$ip" "累计异常${count}次自动加入" 7200  # 加入黑名单2小时
+            log_message "MONITOR: Auto-blacklisted IP $ip after $count anomalies"
+            
+            # 发送告警
+            if [ "${ENABLE_EMAIL_ALERTS:-false}" = "true" ]; then
+                send_alert_email "自动黑名单告警" "IP地址 $ip 因累计异常 $count 次已被自动加入黑名单"
+            fi
+        else
+            echo -e "${YELLOW}IP ${ip} 已在白名单或黑名单中，跳过自动加入${NC}"
+        fi
+    fi
+}
+
 # 检测系统异常
 detect_system_anomalies() {
     echo -e "${BLUE}【检测系统异常】${NC}"
@@ -489,6 +523,17 @@ detect_system_anomalies() {
         # 显示连接分布
         echo -e "${YELLOW}连接状态分布:${NC}"
         netstat -an | awk '{print $6}' | sort | uniq -c | sort -nr
+        
+        # 检查连接数异常的IP并记录
+        echo -e "${YELLOW}连接数最高的IP地址:${NC}"
+        netstat -an | grep ESTABLISHED | awk '{print $5}' | cut -d: -f1 | sort | uniq -c | sort -nr | head -10 | while read count ip; do
+            printf "%-8s %s\n" "$count" "$ip"
+            
+            # 如果单个IP连接数超过20，记录为异常IP
+            if [ $count -gt 20 ]; then
+                record_anomaly_ip "$ip" "异常连接${count}个"
+            fi
+        done
     fi
     
     # 检查系统负载
@@ -508,9 +553,16 @@ detect_system_anomalies() {
             echo -e "${RED}⚠️ 检测到大量失败登录尝试: ${failed_count}次${NC}"
             anomalies_found=true
             
-            # 显示失败登录IP分布
+            # 显示失败登录IP分布并记录异常IP
             echo -e "${YELLOW}失败登录IP分布:${NC}"
-            echo "$failed_logins" | grep -oE "\b([0-9]{1,3}\.){3}[0-9]{1,3}\b" | sort | uniq -c | sort -nr | head -5
+            echo "$failed_logins" | grep -oE "\b([0-9]{1,3}\.){3}[0-9]{1,3}\b" | sort | uniq -c | sort -nr | head -10 | while read count ip; do
+                printf "%-8s %s\n" "$count" "$ip"
+                
+                # 如果单个IP失败登录次数超过5次，记录为异常IP
+                if [ $count -gt 5 ]; then
+                    record_anomaly_ip "$ip" "失败登录${count}次"
+                fi
+            done
         fi
     fi
     
@@ -543,4 +595,82 @@ send_alert_email() {
     log_message "MONITOR: Alert email sent to ${ALERT_EMAIL}: $subject"
     
     return 0
+}
+
+# 查看异常IP统计
+show_anomaly_ip_stats() {
+    echo -e "${BLUE}【异常IP统计】${NC}"
+    echo "=================================="
+    
+    if [ ! -f "$ANOMALY_IP_LOG" ]; then
+        echo -e "${YELLOW}暂无异常IP记录${NC}"
+        return
+    fi
+    
+    local total_records=$(wc -l < "$ANOMALY_IP_LOG")
+    echo -e "${CYAN}总异常记录数: ${total_records}${NC}"
+    echo ""
+    
+    # 显示IP异常次数统计
+    echo -e "${YELLOW}IP异常次数排行 (前20名):${NC}"
+    echo -e "${CYAN}异常次数  IP地址           最近异常时间${NC}"
+    echo "----------------------------------------------------"
+    
+    awk -F'|' '{print $2}' "$ANOMALY_IP_LOG" | sort | uniq -c | sort -nr | head -20 | while read count ip; do
+        # 获取该IP最近的异常时间和原因
+        local last_record=$(grep "|${ip}|" "$ANOMALY_IP_LOG" | tail -1)
+        local last_time=$(echo "$last_record" | cut -d'|' -f1)
+        local last_reason=$(echo "$last_record" | cut -d'|' -f3)
+        
+        printf "%-8s  %-15s  %s (%s)\n" "$count" "$ip" "$last_time" "$last_reason"
+        
+        # 检查是否在黑名单中
+        if is_in_blacklist "$ip"; then
+            echo -e "          ${RED}[已在黑名单]${NC}"
+        elif is_in_whitelist "$ip"; then
+            echo -e "          ${GREEN}[在白名单中]${NC}"
+        fi
+    done
+    
+    echo ""
+    echo -e "${YELLOW}最近10条异常记录:${NC}"
+    echo -e "${CYAN}时间                  IP地址           异常原因${NC}"
+    echo "----------------------------------------------------"
+    
+    tail -10 "$ANOMALY_IP_LOG" | while IFS='|' read -r timestamp ip reason; do
+        printf "%-18s  %-15s  %s\n" "$timestamp" "$ip" "$reason"
+    done
+}
+
+# 清理异常IP日志
+clean_anomaly_ip_log() {
+    echo -e "${BLUE}【清理异常IP日志】${NC}"
+    echo "=================================="
+    
+    if [ ! -f "$ANOMALY_IP_LOG" ]; then
+        echo -e "${YELLOW}异常IP日志文件不存在${NC}"
+        return
+    fi
+    
+    local total_records=$(wc -l < "$ANOMALY_IP_LOG")
+    echo -e "${CYAN}当前记录数: ${total_records}${NC}"
+    
+    # 只保留最近30天的记录
+    local thirty_days_ago=$(date -d "30 days ago" '+%Y-%m-%d')
+    local temp_file="/tmp/anomaly_ip_temp.log"
+    
+    awk -F'|' -v cutoff="$thirty_days_ago" '$1 >= cutoff' "$ANOMALY_IP_LOG" > "$temp_file"
+    
+    local remaining_records=$(wc -l < "$temp_file")
+    
+    if [ $remaining_records -lt $total_records ]; then
+        mv "$temp_file" "$ANOMALY_IP_LOG"
+        local cleaned_count=$((total_records - remaining_records))
+        echo -e "${GREEN}✅ 已清理 ${cleaned_count} 条30天前的记录${NC}"
+        echo -e "${CYAN}剩余记录数: ${remaining_records}${NC}"
+        log_message "MONITOR: Cleaned $cleaned_count old anomaly IP records"
+    else
+        rm -f "$temp_file"
+        echo -e "${YELLOW}无需清理，所有记录都在30天内${NC}"
+    fi
 }

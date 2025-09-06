@@ -4,8 +4,11 @@
 
 # 版本信息
 GITHUB_REPO="pqdm/bt"
-GITHUB_RAW_URL="https://github.com/pqdm/bt/raw/main"
+GITHUB_RAW_URL="https://raw.githubusercontent.com/pqdm/bt/main"
 GITHUB_API_URL="https://api.github.com/repos/pqdm/bt"
+
+# 本地版本定义（当无法从远程获取时使用）
+LOCAL_LATEST_VERSION="2.1.0"
 
 # 检查更新
 check_update() {
@@ -75,28 +78,38 @@ check_update() {
     fi
     
     if [ -z "$latest_version" ]; then
-        echo -e "${RED}错误: 无法获取最新版本信息${NC}"
-        return 1
+        echo -e "${YELLOW}⚠️ 无法从远程获取版本信息，使用本地版本信息${NC}"
+        latest_version="$LOCAL_LATEST_VERSION"
+        
+        # 如果仍然为空，则使用当前版本
+        if [ -z "$latest_version" ]; then
+            echo -e "${RED}错误: 无法获取版本信息${NC}"
+            return 1
+        fi
     fi
     
     echo -e "${YELLOW}最新版本: v${latest_version}${NC}"
     
     # 比较版本号
     if [ "$VERSION" = "$latest_version" ]; then
-        echo -e "${GREEN}✅ 您的版本已是最新${NC}"
+        echo -e "${GREEN}✅ 您的版本已是最新 (v${VERSION})${NC}"
+        echo ""
+        echo -e "${CYAN}当前功能特性:${NC}"
+        echo -e "  • 智能异常IP检测和自动黑名单"
+        echo -e "  • 系统垃圾清理和深度清理"
+        echo -e "  • 实时监控和安全防护"
+        echo -e "  • 恶意文件扫描和清理"
+        echo -e "  • 性能优化和系统加固"
+        echo ""
         
-        # 添加测试更新选项
-        echo -e "${YELLOW}是否要强制更新以测试更新功能? (y/n): ${NC}"
-        read test_update_choice
-        
-        if [[ "$test_update_choice" == "y" || "$test_update_choice" == "Y" ]]; then
-            echo -e "${YELLOW}执行测试更新...${NC}"
-            update_tool "$latest_version"
-        fi
+        # 检查是否有本地更新
+        check_local_updates
         
         return 0
     else
         echo -e "${YELLOW}发现新版本: v${latest_version}${NC}"
+        echo -e "${CYAN}建议更新以获取最新功能和安全修复${NC}"
+        echo ""
         echo -e "${YELLOW}是否要更新? (y/n): ${NC}"
         read update_choice
         
@@ -104,10 +117,67 @@ check_update() {
             update_tool "$latest_version"
         else
             echo -e "${YELLOW}已取消更新${NC}"
+            echo -e "${CYAN}提示: 建议定期检查更新以获取最新的安全功能${NC}"
         fi
     fi
     
     return 0
+}
+
+# 检查本地更新
+check_local_updates() {
+    echo -e "${BLUE}【本地更新检查】${NC}"
+    echo "=================================="
+    
+    # 检查模块完整性
+    local missing_modules=()
+    local modules=("analyzer.sh" "blacklist.sh" "cleaner.sh" "firewall.sh" "monitor.sh" "optimizer.sh" "waf.sh" "updater.sh" "garbage_cleaner.sh" "cleanup_analyzer.sh")
+    
+    for module in "${modules[@]}"; do
+        if [ ! -f "/root/cc_modules/$module" ]; then
+            missing_modules+=($module)
+        fi
+    done
+    
+    if [ ${#missing_modules[@]} -gt 0 ]; then
+        echo -e "${YELLOW}⚠️ 发现缺失的模块:${NC}"
+        for module in "${missing_modules[@]}"; do
+            echo -e "  • $module"
+        done
+        echo ""
+        echo -e "${YELLOW}是否要修复缺失的模块? (y/n): ${NC}"
+        read fix_choice
+        
+        if [[ "$fix_choice" == "y" || "$fix_choice" == "Y" ]]; then
+            echo -e "${YELLOW}正在修复缺失的模块...${NC}"
+            # 这里可以添加从备份或重新生成模块的逻辑
+            echo -e "${YELLOW}提示: 请重新运行安装脚本以修复缺失的模块${NC}"
+        fi
+    else
+        echo -e "${GREEN}✅ 所有模块完整${NC}"
+        
+        # 检查配置文件
+        if [ -f "/root/cc_config.conf" ]; then
+            echo -e "${GREEN}✅ 配置文件正常${NC}"
+        else
+            echo -e "${YELLOW}⚠️ 配置文件缺失${NC}"
+        fi
+        
+        # 检查日志文件
+        local log_file="/var/log/cc_defense.log"
+        if [ -f "$log_file" ]; then
+            local log_size=$(du -h "$log_file" | cut -f1)
+            echo -e "${GREEN}✅ 日志文件正常 (大小: $log_size)${NC}"
+            
+            # 如果日志文件太大，提示清理
+            local log_size_mb=$(du -m "$log_file" | cut -f1)
+            if [ $log_size_mb -gt 100 ]; then
+                echo -e "${YELLOW}⚠️ 日志文件较大 ($log_size)，建议定期清理${NC}"
+            fi
+        else
+            echo -e "${CYAN}ℹ️ 日志文件将在首次运行时创建${NC}"
+        fi
+    fi
 }
 
 # 更新工具
