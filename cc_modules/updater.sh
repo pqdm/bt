@@ -84,10 +84,10 @@ check_update() {
         # 使用简单的HTTP请求
         if command -v curl &> /dev/null; then
             latest_version=$(curl -s -m 10 "${GITHUB_RAW_URL}/VERSION" 2>/dev/null | tr -d '\n\r')
-            echo -e "${CYAN}从VERSION文件获取到: '${latest_version}'${NC}"
+            echo -e "${CYAN}从VERSION文件获取到: ${latest_version}${NC}"
         elif command -v wget &> /dev/null; then
             latest_version=$(wget -q -T 10 -O- "${GITHUB_RAW_URL}/VERSION" 2>/dev/null | tr -d '\n\r')
-            echo -e "${CYAN}从VERSION文件获取到: '${latest_version}'${NC}"
+            echo -e "${CYAN}从VERSION文件获取到: ${latest_version}${NC}"
         fi
     fi
     
@@ -125,7 +125,8 @@ check_update() {
         echo -e "${YELLOW}发现新版本: v${latest_version}${NC}"
         echo -e "${CYAN}建议更新以获取最新功能和安全修复${NC}"
         echo ""
-        echo -e "${YELLOW}是否要更新? (y/n): ${NC}"
+        echo -e "${YELLOW}是否要更新？${NC}"
+        echo -ne "${YELLOW}请输入 y 或 n: ${NC}"
         read update_choice
         
         if [[ "$update_choice" == "y" || "$update_choice" == "Y" ]]; then
@@ -160,7 +161,8 @@ check_local_updates() {
             echo -e "  • $module"
         done
         echo ""
-        echo -e "${YELLOW}是否要修复缺失的模块? (y/n): ${NC}"
+        echo -e "${YELLOW}是否要修复缺失的模块？${NC}"
+        echo -ne "${YELLOW}请输入 y 或 n: ${NC}"
         read fix_choice
         
         if [[ "$fix_choice" == "y" || "$fix_choice" == "Y" ]]; then
