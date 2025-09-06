@@ -55,12 +55,12 @@ log_message() {
 show_header() {
     clear
     echo -e "${CYAN}╔══════════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${CYAN}║               宝塔面板服务器维护工具 v$VERSION               ║${NC}"
+    echo -e "${CYAN}║               宝塔面板服务器维护工具 v$VERSION                 ║${NC}"
     echo -e "${CYAN}║            BT Panel Server Maintenance Tool                  ║${NC}"
     echo -e "${CYAN}║                                                              ║${NC}"
-    echo -e "${CYAN}║  作者: 咸鱼神秘人                                            ║${NC}"
-    echo -e "${CYAN}║  微信: dingyanan2008                                         ║${NC}"
-    echo -e "${CYAN}║  QQ: 314450957                                               ║${NC}"
+    echo -e "${CYAN}║                                                              ║${NC}"
+    echo -e "${CYAN}║ 作者: 咸鱼-神秘人  微信:dingyanan2008   QQ:314450957          ║${NC}"
+    echo -e "${CYAN}║                                                              ║${NC}"
     echo -e "${CYAN}╚══════════════════════════════════════════════════════════════╝${NC}"
     echo ""
 }
