@@ -18,6 +18,16 @@ NC='\033[0m' # No Color
 CONFIG_FILE="/root/cc_config.conf"
 MODULES_DIR="/root/cc_modules"
 LOG_FILE="/var/log/cc_defense.log"
+VERSION_FILE="/root/VERSION"
+
+# 获取版本号
+get_version() {
+    if [ -f "$VERSION_FILE" ]; then
+        VERSION=$(cat "$VERSION_FILE" | tr -d '\n\r')
+    else
+        VERSION="2.1.0"
+    fi
+}
 
 # 加载配置文件
 load_config() {
@@ -58,33 +68,31 @@ show_header() {
 # 显示菜单
 show_menu() {
     show_header
-    echo -e "${BLUE}【主菜单】${NC}"
-    echo "=================================="
-    echo -e "${CYAN}1.${NC} 实时监控系统"
-    echo -e "${CYAN}2.${NC} 分析Web访问日志"
-    echo -e "${CYAN}3.${NC} 监控CC攻击"
-    echo -e "${CYAN}4.${NC} 监控异常进程"
-    echo -e "${CYAN}5.${NC} 检测系统异常"
-    echo -e "${CYAN}6.${NC} 查看黑名单"
-    echo -e "${CYAN}7.${NC} 管理黑名单"
-    echo -e "${CYAN}8.${NC} 设置防火墙规则"
-    echo -e "${CYAN}9.${NC} 设置WAF规则"
-    echo -e "${CYAN}10.${NC} 优化系统参数"
-    echo -e "${CYAN}11.${NC} 一键安全加固"
-    echo -e "${CYAN}12.${NC} 查看系统信息"
-    echo -e "${CYAN}13.${NC} 配置选项"
-    echo -e "${CYAN}14.${NC} 恶意文件清理"
-    echo -e "${CYAN}15.${NC} CPU进程清理(自动修复高CPU)"
-    echo -e "${CYAN}16.${NC} 内存进程清理(自动修复高内存)"
-    echo -e "${CYAN}17.${NC} 一键处理CC攻击"
-    echo -e "${CYAN}18.${NC} 清理可疑进程(挖矿/木马)"
-    echo -e "${CYAN}19.${NC} SSH端口安全变更"
-    echo -e "${CYAN}20.${NC} 检查SSH连接状态"
-    echo -e "${CYAN}21.${NC} 关于"
-    echo -e "${CYAN}22.${NC} 检查更新"
-    echo -e "${CYAN}23.${NC} 卸载工具"
-    echo -e "${CYAN}0.${NC} 退出"
-    echo "=================================="
+    echo -e "${BLUE}【主菜单 - 请选择功能分类】${NC}"
+    echo "=================================================================="
+    echo -e "${GREEN}📊 系统监控${NC}                    ${GREEN}🔍 日志分析${NC}"
+    printf "%-32s %s\n" "${CYAN}1.${NC} 实时监控系统" "${CYAN}4.${NC} 分析Web访问日志"
+    printf "%-32s %s\n" "${CYAN}2.${NC} 检测系统异常" "${CYAN}5.${NC} 监控CC攻击"
+    printf "%-32s %s\n" "${CYAN}3.${NC} 查看系统信息" "${CYAN}6.${NC} 监控异常进程"
+    echo ""
+    echo -e "${GREEN}🛡️ 安全防护${NC}                    ${GREEN}🗑️ 系统清理${NC}"
+    printf "%-32s %s\n" "${CYAN}7.${NC} 查看黑名单" "${CYAN}13.${NC} 恶意文件清理"
+    printf "%-32s %s\n" "${CYAN}8.${NC} 管理黑名单" "${CYAN}14.${NC} 系统垃圾清理"
+    printf "%-32s %s\n" "${CYAN}9.${NC} 设置防火墙规则" "${CYAN}15.${NC} 深度清理系统"
+    printf "%-32s %s\n" "${CYAN}10.${NC} 设置WAF规则" "${CYAN}16.${NC} 预估清理空间"
+    printf "%-32s %s\n" "${CYAN}11.${NC} SSH端口安全变更" "${CYAN}17.${NC} 清理策略推荐"
+    printf "%-32s %s\n" "${CYAN}12.${NC} 检查SSH连接状态" "${CYAN}18.${NC} 清理安全检查"
+    echo ""
+    echo -e "${GREEN}⚡ 性能优化${NC}                    ${GREEN}🚨 应急处理${NC}"
+    printf "%-32s %s\n" "${CYAN}19.${NC} 优化系统参数" "${CYAN}22.${NC} 一键处理CC攻击"
+    printf "%-32s %s\n" "${CYAN}20.${NC} CPU进程清理" "${CYAN}23.${NC} 清理可疑进程(挖矿/木马)"
+    printf "%-32s %s\n" "${CYAN}21.${NC} 内存进程清理" "${CYAN}24.${NC} 一键安全加固"
+    echo ""
+    echo -e "${GREEN}⚙️ 系统管理${NC}"
+    printf "%-32s %s\n" "${CYAN}25.${NC} 配置选项" "${CYAN}27.${NC} 检查更新"
+    printf "%-32s %s\n" "${CYAN}26.${NC} 关于" "${CYAN}28.${NC} 卸载工具"
+    printf "%-32s %s\n" "${CYAN}0.${NC} 退出" ""
+    echo "=================================================================="
     echo -ne "${YELLOW}请输入选择: ${NC}"
 }
 
@@ -152,6 +160,20 @@ load_modules() {
         exit 1
     fi
     
+    # 加载系统垃圾清理模块
+    if [ -f "$MODULES_DIR/garbage_cleaner.sh" ]; then
+        source "$MODULES_DIR/garbage_cleaner.sh"
+    else
+        echo -e "${YELLOW}警告: 系统垃圾清理模块不存在 $MODULES_DIR/garbage_cleaner.sh${NC}"
+    fi
+    
+    # 加载清理分析模块
+    if [ -f "$MODULES_DIR/cleanup_analyzer.sh" ]; then
+        source "$MODULES_DIR/cleanup_analyzer.sh"
+    else
+        echo -e "${YELLOW}警告: 清理分析模块不存在 $MODULES_DIR/cleanup_analyzer.sh${NC}"
+    fi
+    
     # 加载更新模块
     if [ -f "$MODULES_DIR/updater.sh" ]; then
         source "$MODULES_DIR/updater.sh"
@@ -196,6 +218,9 @@ check_dependencies() {
 
 # 初始化
 initialize() {
+    # 获取版本号
+    get_version
+    
     # 创建目录
     create_dirs
     
@@ -224,26 +249,32 @@ handle_menu() {
             monitor_system
             ;;
         2)
-            # 分析Web访问日志
-            analyze_logs
-            echo -e "${YELLOW}按任意键继续...${NC}"
-            read -n 1
-            ;;
-        3)
-            # 监控CC攻击
-            monitor_cc_attack
-            ;;
-        4)
-            # 监控异常进程
-            monitor_processes
-            ;;
-        5)
             # 检测系统异常
             detect_system_anomalies
             echo -e "${YELLOW}按任意键继续...${NC}"
             read -n 1
             ;;
+        3)
+            # 查看系统信息
+            show_system_info
+            echo -e "${YELLOW}按任意键继续...${NC}"
+            read -n 1
+            ;;
+        4)
+            # 分析Web访问日志
+            analyze_logs
+            echo -e "${YELLOW}按任意键继续...${NC}"
+            read -n 1
+            ;;
+        5)
+            # 监控CC攻击
+            monitor_cc_attack
+            ;;
         6)
+            # 监控异常进程
+            monitor_processes
+            ;;
+        7)
             # 查看黑名单
             show_blacklist
             echo ""
@@ -251,83 +282,19 @@ handle_menu() {
             echo -e "${YELLOW}按任意键继续...${NC}"
             read -n 1
             ;;
-        7)
+        8)
             # 管理黑名单
             blacklist_menu
             ;;
-        8)
+        9)
             # 设置防火墙规则
             firewall_menu
             ;;
-        9)
+        10)
             # 设置WAF规则
             waf_menu
             ;;
-        10)
-            # 优化系统参数
-            optimizer_menu
-            ;;
         11)
-            # 一键安全加固
-            security_hardening
-            echo -e "${YELLOW}按任意键继续...${NC}"
-            read -n 1
-            ;;
-        12)
-            # 查看系统信息
-            show_system_info
-            echo -e "${YELLOW}按任意键继续...${NC}"
-            read -n 1
-            ;;
-        13)
-            # 配置选项
-            config_menu
-            ;;
-        14)
-            # 恶意文件清理
-            malware_menu
-            ;;
-        15)
-            # CPU进程清理（调用优化模块自动修复高CPU）
-            if type fix_high_cpu &>/dev/null; then
-                fix_high_cpu
-            else
-                echo -e "${RED}错误: 优化模块未加载或不支持fix_high_cpu${NC}"
-            fi
-            echo -e "${YELLOW}按任意键继续...${NC}"
-            read -n 1
-            ;;
-        16)
-            # 内存进程清理
-            if type fix_high_memory &>/dev/null; then
-                fix_high_memory
-            else
-                echo -e "${RED}错误: 优化模块未加载或不支持fix_high_memory${NC}"
-            fi
-            echo -e "${YELLOW}按任意键继续...${NC}"
-            read -n 1
-            ;;
-        17)
-            # 一键处理CC攻击
-            if type fix_cc_attack &>/dev/null; then
-                fix_cc_attack
-            else
-                echo -e "${RED}错误: 优化模块未加载或不支持fix_cc_attack${NC}"
-            fi
-            echo -e "${YELLOW}按任意键继续...${NC}"
-            read -n 1
-            ;;
-        18)
-            # 清理可疑进程
-            if type fix_suspicious_processes &>/dev/null; then
-                fix_suspicious_processes
-            else
-                echo -e "${RED}错误: 优化模块未加载或不支持fix_suspicious_processes${NC}"
-            fi
-            echo -e "${YELLOW}按任意键继续...${NC}"
-            read -n 1
-            ;;
-        19)
             # SSH端口安全变更
             if type change_ssh_port_safely &>/dev/null; then
                 change_ssh_port_safely
@@ -337,7 +304,7 @@ handle_menu() {
             echo -e "${YELLOW}按任意键继续...${NC}"
             read -n 1
             ;;
-        20)
+        12)
             # 检查SSH连接状态
             if type check_ssh_status &>/dev/null; then
                 check_ssh_status
@@ -347,13 +314,121 @@ handle_menu() {
             echo -e "${YELLOW}按任意键继续...${NC}"
             read -n 1
             ;;
+        13)
+            # 恶意文件清理
+            malware_menu
+            ;;
+        14)
+            # 系统垃圾清理
+            if type clean_system_garbage &>/dev/null; then
+                clean_system_garbage
+            else
+                echo -e "${RED}错误: 清理模块未加载或不支持clean_system_garbage${NC}"
+            fi
+            echo -e "${YELLOW}按任意键继续...${NC}"
+            read -n 1
+            ;;
+        15)
+            # 深度清理系统
+            if type deep_clean_system &>/dev/null; then
+                deep_clean_system
+            else
+                echo -e "${RED}错误: 清理模块未加载或不支持deep_clean_system${NC}"
+            fi
+            echo -e "${YELLOW}按任意键继续...${NC}"
+            read -n 1
+            ;;
+        16)
+            # 预估清理空间
+            if type estimate_cleanup_space &>/dev/null; then
+                estimate_cleanup_space
+            else
+                echo -e "${RED}错误: 清理模块未加载或不支持estimate_cleanup_space${NC}"
+            fi
+            echo -e "${YELLOW}按任意键继续...${NC}"
+            read -n 1
+            ;;
+        17)
+            # 清理策略推荐
+            if type recommend_cleanup_strategy &>/dev/null; then
+                recommend_cleanup_strategy
+            else
+                echo -e "${RED}错误: 清理模块未加载或不支持recommend_cleanup_strategy${NC}"
+            fi
+            echo -e "${YELLOW}按任意键继续...${NC}"
+            read -n 1
+            ;;
+        18)
+            # 清理安全检查
+            if type safety_check &>/dev/null; then
+                safety_check
+            else
+                echo -e "${RED}错误: 清理模块未加载或不支持safety_check${NC}"
+            fi
+            echo -e "${YELLOW}按任意键继续...${NC}"
+            read -n 1
+            ;;
+        19)
+            # 优化系统参数
+            optimizer_menu
+            ;;
+        20)
+            # CPU进程清理
+            if type fix_high_cpu &>/dev/null; then
+                fix_high_cpu
+            else
+                echo -e "${RED}错误: 优化模块未加载或不支持fix_high_cpu${NC}"
+            fi
+            echo -e "${YELLOW}按任意键继续...${NC}"
+            read -n 1
+            ;;
         21)
+            # 内存进程清理
+            if type fix_high_memory &>/dev/null; then
+                fix_high_memory
+            else
+                echo -e "${RED}错误: 优化模块未加载或不支持fix_high_memory${NC}"
+            fi
+            echo -e "${YELLOW}按任意键继续...${NC}"
+            read -n 1
+            ;;
+        22)
+            # 一键处理CC攻击
+            if type fix_cc_attack &>/dev/null; then
+                fix_cc_attack
+            else
+                echo -e "${RED}错误: 优化模块未加载或不支持fix_cc_attack${NC}"
+            fi
+            echo -e "${YELLOW}按任意键继续...${NC}"
+            read -n 1
+            ;;
+        23)
+            # 清理可疑进程
+            if type fix_suspicious_processes &>/dev/null; then
+                fix_suspicious_processes
+            else
+                echo -e "${RED}错误: 优化模块未加载或不支持fix_suspicious_processes${NC}"
+            fi
+            echo -e "${YELLOW}按任意键继续...${NC}"
+            read -n 1
+            ;;
+        24)
+            # 一键安全加固
+            security_hardening
+            echo -e "${YELLOW}按任意键继续...${NC}"
+            read -n 1
+            ;;
+        25)
+            # 配置选项
+            config_menu
+            ;;
+        26)
             # 关于
             show_about
             echo -e "${YELLOW}按任意键继续...${NC}"
             read -n 1
             ;;
-        22)
+        27)
             # 检查更新
             if type check_update &>/dev/null; then
                 check_update
@@ -363,7 +438,7 @@ handle_menu() {
             echo -e "${YELLOW}按任意键继续...${NC}"
             read -n 1
             ;;
-        23)
+        28)
             # 卸载工具
             echo -e "${YELLOW}确定要卸载宝塔面板服务器维护工具吗? (y/n): ${NC}"
             read confirm
@@ -865,9 +940,14 @@ malware_menu() {
         echo "=================================="
         echo -e "${CYAN}1.${NC} 定位恶意进程文件"
         echo -e "${CYAN}2.${NC} 扫描系统恶意文件"
-        echo -e "${CYAN}3.${NC} 检查启动项"
-        echo -e "${CYAN}4.${NC} 检查定时任务"
-        echo -e "${CYAN}5.${NC} 检查Web目录恶意文件"
+        echo -e "${CYAN}3.${NC} 系统垃圾清理"
+        echo -e "${CYAN}4.${NC} 深度清理系统"
+        echo -e "${CYAN}5.${NC} 预估清理空间"
+        echo -e "${CYAN}6.${NC} 清理策略推荐"
+        echo -e "${CYAN}7.${NC} 清理安全检查"
+        echo -e "${CYAN}8.${NC} 检查启动项"
+        echo -e "${CYAN}9.${NC} 检查定时任务"
+        echo -e "${CYAN}10.${NC} 检查Web目录恶意文件"
         echo -e "${CYAN}0.${NC} 返回主菜单"
         echo "=================================="
         echo -ne "${YELLOW}请输入选择: ${NC}"
@@ -888,16 +968,41 @@ malware_menu() {
                 read -n 1
                 ;;
             3)
-                check_startup_entries
+                clean_system_garbage
                 echo -e "${YELLOW}按任意键继续...${NC}"
                 read -n 1
                 ;;
             4)
-                check_cron_jobs
+                deep_clean_system
                 echo -e "${YELLOW}按任意键继续...${NC}"
                 read -n 1
                 ;;
             5)
+                estimate_cleanup_space
+                echo -e "${YELLOW}按任意键继续...${NC}"
+                read -n 1
+                ;;
+            6)
+                recommend_cleanup_strategy
+                echo -e "${YELLOW}按任意键继续...${NC}"
+                read -n 1
+                ;;
+            7)
+                safety_check
+                echo -e "${YELLOW}按任意键继续...${NC}"
+                read -n 1
+                ;;
+            8)
+                check_startup_entries
+                echo -e "${YELLOW}按任意键继续...${NC}"
+                read -n 1
+                ;;
+            9)
+                check_cron_jobs
+                echo -e "${YELLOW}按任意键继续...${NC}"
+                read -n 1
+                ;;
+            10)
                 check_web_malware
                 echo -e "${YELLOW}按任意键继续...${NC}"
                 read -n 1

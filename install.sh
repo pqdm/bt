@@ -30,6 +30,8 @@ echo -e "${YELLOW}下载模块文件...${NC}"
 wget https://github.com/pqdm/bt/raw/main/cc_modules/analyzer.sh -O /root/cc_modules/analyzer.sh
 wget https://github.com/pqdm/bt/raw/main/cc_modules/blacklist.sh -O /root/cc_modules/blacklist.sh
 wget https://github.com/pqdm/bt/raw/main/cc_modules/cleaner.sh -O /root/cc_modules/cleaner.sh
+wget https://github.com/pqdm/bt/raw/main/cc_modules/garbage_cleaner.sh -O /root/cc_modules/garbage_cleaner.sh
+wget https://github.com/pqdm/bt/raw/main/cc_modules/cleanup_analyzer.sh -O /root/cc_modules/cleanup_analyzer.sh
 wget https://github.com/pqdm/bt/raw/main/cc_modules/firewall.sh -O /root/cc_modules/firewall.sh
 wget https://github.com/pqdm/bt/raw/main/cc_modules/monitor.sh -O /root/cc_modules/monitor.sh
 wget https://github.com/pqdm/bt/raw/main/cc_modules/optimizer.sh -O /root/cc_modules/optimizer.sh
