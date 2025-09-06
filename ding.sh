@@ -74,6 +74,7 @@ show_menu() {
     echo -e "${CYAN}1.${NC} 实时监控系统                ${CYAN}4.${NC} 分析Web访问日志"
     echo -e "${CYAN}2.${NC} 检测系统异常                ${CYAN}5.${NC} 监控CC攻击"
     echo -e "${CYAN}3.${NC} 查看系统信息                ${CYAN}6.${NC} 监控异常进程"
+    echo -e "                                     ${CYAN}29.${NC} 异常IP统计"
     echo ""
     echo -e "${GREEN}▲ 安全防护                      ● 系统清理${NC}"
     echo -e "${CYAN}7.${NC} 查看黑名单                  ${CYAN}13.${NC} 恶意文件清理"
@@ -487,6 +488,33 @@ handle_menu() {
                 echo -e "${YELLOW}按任意键继续...${NC}"
                 read -n 1
             fi
+            ;;
+        29)
+            # 异常IP统计
+            if type show_anomaly_ip_stats &>/dev/null; then
+                show_anomaly_ip_stats
+            else
+                echo -e "${RED}错误: 监控模块未加载或不支持show_anomaly_ip_stats${NC}"
+            fi
+            echo ""
+            echo -e "${BLUE}【管理选项】${NC}"
+            echo -e "${CYAN}1.${NC} 清理30天前的异常IP记录"
+            echo -e "${CYAN}0.${NC} 返回主菜单"
+            echo -ne "${YELLOW}请选择操作: ${NC}"
+            read sub_choice
+            case $sub_choice in
+                1)
+                    if type clean_anomaly_ip_log &>/dev/null; then
+                        clean_anomaly_ip_log
+                    else
+                        echo -e "${RED}错误: 监控模块未加载或不支持clean_anomaly_ip_log${NC}"
+                    fi
+                    ;;
+                0|*)
+                    ;;
+            esac
+            echo -e "${YELLOW}按任意键继续...${NC}"
+            read -n 1
             ;;
         0)
             # 退出
