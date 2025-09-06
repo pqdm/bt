@@ -441,7 +441,8 @@ handle_menu() {
             ;;
         28)
             # 卸载工具
-            echo -e "${YELLOW}确定要卸载宝塔面板服务器维护工具吗? (y/n): ${NC}"
+            echo -e "${YELLOW}确定要卸载宝塔面板服务器维护工具吗？${NC}"
+            echo -ne "${YELLOW}请输入 y 或 n: ${NC}"
             read confirm
             if [[ "$confirm" == "y" || "$confirm" == "Y" ]]; then
                 echo -e "${YELLOW}开始卸载...${NC}"
