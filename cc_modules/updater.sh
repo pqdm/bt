@@ -213,6 +213,8 @@ update_tool() {
     echo -e "${YELLOW}备份当前文件...${NC}"
     cp -f /usr/local/bin/ding "$backup_dir/" 2>/dev/null
     cp -f /root/cc_config.conf "$backup_dir/" 2>/dev/null
+    cp -f /root/cc_config_bt_whitelist.conf "$backup_dir/" 2>/dev/null
+    cp -f /root/VERSION "$backup_dir/" 2>/dev/null
     cp -rf /root/cc_modules "$backup_dir/" 2>/dev/null
     
     # 下载新版本
@@ -229,23 +231,35 @@ update_tool() {
     # 创建软链接
     ln -sf /usr/local/bin/ding /root/cc_defense.sh
     
-    # 下载配置文件（如果不存在）
-    if [ ! -f "/root/cc_config.conf" ]; then
-        if ! download_file "${GITHUB_RAW_URL}/cc_config.conf" "/root/cc_config.conf" "配置文件"; then
-            echo -e "${RED}更新失败: 无法下载配置文件${NC}"
-            restore_backup "$backup_dir"
-            return 1
-        fi
-    else
-        # 更新配置文件中的版本号
-        sed -i "s/VERSION=\"[0-9.]*\"/VERSION=\"$new_version\"/" /root/cc_config.conf
+    # 下载/更新根目录配置文件
+    echo -e "${YELLOW}更新配置文件...${NC}"
+    
+    # 更新主配置文件
+    if ! download_file "${GITHUB_RAW_URL}/cc_config.conf" "/root/cc_config.conf" "主配置文件"; then
+        echo -e "${RED}更新失败: 无法下载主配置文件${NC}"
+        restore_backup "$backup_dir"
+        return 1
+    fi
+    
+    # 更新版本文件
+    if ! download_file "${GITHUB_RAW_URL}/VERSION" "/root/VERSION" "版本文件"; then
+        echo -e "${RED}更新失败: 无法下载版本文件${NC}"
+        restore_backup "$backup_dir"
+        return 1
+    fi
+    
+    # 更新宝塔白名单配置文件
+    if ! download_file "${GITHUB_RAW_URL}/cc_config_bt_whitelist.conf" "/root/cc_config_bt_whitelist.conf" "宝塔白名单配置"; then
+        echo -e "${RED}更新失败: 无法下载宝塔白名单配置文件${NC}"
+        restore_backup "$backup_dir"
+        return 1
     fi
     
     # 创建模块目录
     mkdir -p /root/cc_modules
     
     # 下载模块文件
-    local modules=("analyzer.sh" "blacklist.sh" "cleaner.sh" "firewall.sh" "monitor.sh" "optimizer.sh" "waf.sh" "updater.sh")
+    local modules=("analyzer.sh" "blacklist.sh" "cleaner.sh" "garbage_cleaner.sh" "cleanup_analyzer.sh" "firewall.sh" "monitor.sh" "optimizer.sh" "waf.sh" "updater.sh")
     
     for module in "${modules[@]}"; do
         if ! download_file "${GITHUB_RAW_URL}/cc_modules/${module}" "/root/cc_modules/${module}" "模块 ${module}"; then
