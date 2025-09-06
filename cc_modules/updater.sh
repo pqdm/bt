@@ -8,7 +8,7 @@ GITHUB_RAW_URL="https://raw.githubusercontent.com/pqdm/bt/main"
 GITHUB_API_URL="https://api.github.com/repos/pqdm/bt"
 
 # 本地版本定义（当无法从远程获取时使用）
-LOCAL_LATEST_VERSION="2.1.0"
+LOCAL_LATEST_VERSION="2.1.2"
 
 # 检查更新
 check_update() {
@@ -42,19 +42,30 @@ check_update() {
     local temp_file=$(mktemp)
     
     # 下载远程配置文件
+    echo -e "${CYAN}尝试从配置文件获取版本: ${GITHUB_RAW_URL}/cc_config.conf${NC}"
     if command -v curl &> /dev/null; then
         if curl -s -m 10 "${GITHUB_RAW_URL}/cc_config.conf" -o "$temp_file"; then
             # 从配置文件中提取版本号
             if [ -f "$temp_file" ] && [ -s "$temp_file" ]; then
                 latest_version=$(grep "VERSION=" "$temp_file" | cut -d'"' -f2)
+                echo -e "${CYAN}从配置文件获取到版本: ${latest_version}${NC}"
+            else
+                echo -e "${YELLOW}配置文件下载失败或为空${NC}"
             fi
+        else
+            echo -e "${YELLOW}无法下载配置文件${NC}"
         fi
     elif command -v wget &> /dev/null; then
         if wget -q -T 10 "${GITHUB_RAW_URL}/cc_config.conf" -O "$temp_file"; then
             # 从配置文件中提取版本号
             if [ -f "$temp_file" ] && [ -s "$temp_file" ]; then
                 latest_version=$(grep "VERSION=" "$temp_file" | cut -d'"' -f2)
+                echo -e "${CYAN}从配置文件获取到版本: ${latest_version}${NC}"
+            else
+                echo -e "${YELLOW}配置文件下载失败或为空${NC}"
             fi
+        else
+            echo -e "${YELLOW}无法下载配置文件${NC}"
         fi
     else
         echo -e "${RED}错误: 未找到curl或wget命令${NC}"
@@ -68,18 +79,22 @@ check_update() {
     # 如果仍然无法获取版本信息，尝试使用备用方法
     if [ -z "$latest_version" ]; then
         echo -e "${YELLOW}尝试备用方法获取版本信息...${NC}"
+        echo -e "${CYAN}尝试从VERSION文件获取: ${GITHUB_RAW_URL}/VERSION${NC}"
         
         # 使用简单的HTTP请求
         if command -v curl &> /dev/null; then
-            latest_version=$(curl -s -m 10 "${GITHUB_RAW_URL}/VERSION" 2>/dev/null)
+            latest_version=$(curl -s -m 10 "${GITHUB_RAW_URL}/VERSION" 2>/dev/null | tr -d '\n\r')
+            echo -e "${CYAN}从VERSION文件获取到: '${latest_version}'${NC}"
         elif command -v wget &> /dev/null; then
-            latest_version=$(wget -q -T 10 -O- "${GITHUB_RAW_URL}/VERSION" 2>/dev/null)
+            latest_version=$(wget -q -T 10 -O- "${GITHUB_RAW_URL}/VERSION" 2>/dev/null | tr -d '\n\r')
+            echo -e "${CYAN}从VERSION文件获取到: '${latest_version}'${NC}"
         fi
     fi
     
     if [ -z "$latest_version" ]; then
         echo -e "${YELLOW}⚠️ 无法从远程获取版本信息，使用本地版本信息${NC}"
         latest_version="$LOCAL_LATEST_VERSION"
+        echo -e "${CYAN}使用本地回退版本: ${latest_version}${NC}"
         
         # 如果仍然为空，则使用当前版本
         if [ -z "$latest_version" ]; then
