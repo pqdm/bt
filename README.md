@@ -49,30 +49,43 @@ chmod +x install.sh
 mkdir -p /root/cc_modules
 
 # 下载主脚本
+echo -e "${YELLOW}下载主脚本...${NC}"
 wget https://github.com/pqdm/bt/raw/main/ding.sh -O /usr/local/bin/ding
 chmod +x /usr/local/bin/ding
 
 # 创建软链接
+echo -e "${YELLOW}创建软链接...${NC}"
 ln -sf /usr/local/bin/ding /root/cc_defense.sh
 
 # 下载配置文件
+echo -e "${YELLOW}下载配置文件...${NC}"
 wget https://github.com/pqdm/bt/raw/main/cc_config.conf -O /root/cc_config.conf
+wget https://github.com/pqdm/bt/raw/main/cc_config_bt_whitelist.conf -O /root/cc_config_bt_whitelist.conf
+wget https://github.com/pqdm/bt/raw/main/VERSION -O /root/VERSION
 
 # 下载模块文件
+echo -e "${YELLOW}下载模块文件...${NC}"
 wget https://github.com/pqdm/bt/raw/main/cc_modules/analyzer.sh -O /root/cc_modules/analyzer.sh
 wget https://github.com/pqdm/bt/raw/main/cc_modules/blacklist.sh -O /root/cc_modules/blacklist.sh
 wget https://github.com/pqdm/bt/raw/main/cc_modules/cleaner.sh -O /root/cc_modules/cleaner.sh
+wget https://github.com/pqdm/bt/raw/main/cc_modules/garbage_cleaner.sh -O /root/cc_modules/garbage_cleaner.sh
+wget https://github.com/pqdm/bt/raw/main/cc_modules/cleanup_analyzer.sh -O /root/cc_modules/cleanup_analyzer.sh
 wget https://github.com/pqdm/bt/raw/main/cc_modules/firewall.sh -O /root/cc_modules/firewall.sh
 wget https://github.com/pqdm/bt/raw/main/cc_modules/monitor.sh -O /root/cc_modules/monitor.sh
 wget https://github.com/pqdm/bt/raw/main/cc_modules/optimizer.sh -O /root/cc_modules/optimizer.sh
 wget https://github.com/pqdm/bt/raw/main/cc_modules/waf.sh -O /root/cc_modules/waf.sh
+wget https://github.com/pqdm/bt/raw/main/cc_modules/updater.sh -O /root/cc_modules/updater.sh
 
 # 设置执行权限
+echo -e "${YELLOW}设置执行权限...${NC}"
 chmod +x /root/cc_modules/*.sh
 
 # 创建黑白名单文件
 touch /root/cc_blacklist.txt
 touch /root/cc_whitelist.txt
+
+echo -e "${GREEN}宝塔面板服务器维护工具安装完成!${NC}"
+echo -e "${GREEN}现在可以通过运行 'ding' 命令来启动系统${NC}"
 ```
 
 ## 快速开始
@@ -255,7 +268,7 @@ chmod +x uninstall.sh
 
 ## 更新日志
 
-### v2.1.0 (2025.01.XX)
+### v2.1.0 (2025.09.06)
 - **新增功能** - 添加系统垃圾清理功能，支持清理临时文件、日志文件、包管理器缓存等
 - **深度清理** - 新增深度清理系统功能，支持清理Docker文件、数据库日志、编译缓存、网站缓存等
 - **智能黑名单** - 新增异常IP自动统计功能，IP异常达到5次以上自动加入黑名单
