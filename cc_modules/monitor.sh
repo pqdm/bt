@@ -226,7 +226,7 @@ detect_abnormal_connections() {
             # 自动加入黑名单
             if [ "${AUTO_BLACKLIST:-true}" = "true" ] && [ $count -gt 50 ]; then
                 if ! is_in_whitelist "$ip" && ! is_in_blacklist "$ip"; then
-                    add_to_blacklist "$ip" "连接数异常: $count 个连接" 3600
+                    add_to_blacklist "$ip" "连接数异常: $count 个连接" 0
                 fi
             fi
         done <<< "$high_conn_ips"
@@ -287,7 +287,7 @@ monitor_logs() {
                     # 自动加入黑名单
                     if [ "${AUTO_BLACKLIST:-true}" = "true" ]; then
                         if ! is_in_whitelist "$ip"; then
-                            add_to_blacklist "$ip" "实时检测到攻击行为" 3600
+                            add_to_blacklist "$ip" "实时检测到攻击行为" 0
                         fi
                     fi
                 else
@@ -369,7 +369,7 @@ monitor_cc_attack() {
                 # 自动加入黑名单
                 if [ "${AUTO_BLACKLIST:-true}" = "true" ] && [ $count -gt 20 ]; then
                     if ! is_in_whitelist "$ip"; then
-                        add_to_blacklist "$ip" "SYN洪水攻击: $count SYN连接" 3600
+                        add_to_blacklist "$ip" "SYN洪水攻击: $count SYN连接" 0
                     fi
                 fi
             done
@@ -385,7 +385,7 @@ monitor_cc_attack() {
             # 自动加入黑名单
             if [ "${AUTO_BLACKLIST:-true}" = "true" ] && [ $count -gt 50 ]; then
                 if ! is_in_whitelist "$ip" && ! is_in_blacklist "$ip"; then
-                    add_to_blacklist "$ip" "连接数异常: $count 个连接" 3600
+                    add_to_blacklist "$ip" "连接数异常: $count 个连接" 0
                 fi
             fi
         done
@@ -593,7 +593,7 @@ record_anomaly_ip() {
     if [ $count -ge 5 ]; then
         if ! is_in_whitelist "$ip" && ! is_in_blacklist "$ip"; then
             echo -e "${RED}⚠️ IP ${ip} 异常次数达到 ${count} 次，自动加入黑名单${NC}"
-            add_to_blacklist "$ip" "累计异常${count}次自动加入" 7200  # 加入黑名单2小时
+            add_to_blacklist "$ip" "累计异常${count}次自动加入" 0
             log_message "MONITOR: Auto-blacklisted IP $ip after $count anomalies"
             
             # 发送告警
@@ -713,12 +713,12 @@ detect_system_anomalies() {
         echo -e "${GREEN}✅ 未检测到系统异常${NC}"
     fi
 
-    # 一键加入黑名单（可选）
-    if [ -s "${_abn_tmp}" ]; then
+    # 一键加入黑名单（可选，非自动模式下才提示）
+    if [ "${NON_INTERACTIVE:-false}" != "true" ] && [ -s "${_abn_tmp}" ]; then
         echo ""
         echo -e "${YELLOW}本次检测到的异常IP（候选加入黑名单）:${NC}"
         sort -u "${_abn_tmp}" | nl -w2 -s'. '
-        echo -ne "${YELLOW}是否将以上异常IP一键加入黑名单(2小时)? (y/n): ${NC}"
+        echo -ne "${YELLOW}是否将以上异常IP一键加入黑名单(永久)? (y/n): ${NC}"
         read _confirm_black
         if [[ "${_confirm_black}" == "y" || "${_confirm_black}" == "Y" ]]; then
             local _added=0 _skipped=0
@@ -734,8 +734,8 @@ detect_system_anomalies() {
                     _skipped=$((_skipped+1))
                     continue
                 fi
-                add_to_blacklist "${_ip}" "系统异常检测: 异常行为" 7200
-                echo -e "${RED}已加入黑名单: ${_ip}${NC}"
+                add_to_blacklist "${_ip}" "系统异常检测: 异常行为" 0
+                echo -e "${RED}已加入黑名单(永久): ${_ip}${NC}"
                 _added=$((_added+1))
             done < <(sort -u "${_abn_tmp}")
             echo -e "${CYAN}汇总: 新增 ${_added} 个IP到黑名单，跳过 ${_skipped} 个${NC}"
@@ -788,6 +788,9 @@ show_anomaly_ip_stats() {
     echo -e "${CYAN}异常次数  IP地址           最近异常时间${NC}"
     echo "----------------------------------------------------"
     
+    local _rank_tmp="/tmp/anomaly_rank_$$.list"
+    : > "${_rank_tmp}"
+
     awk -F'|' '{print $2}' "$ANOMALY_IP_LOG" | sort | uniq -c | sort -nr | head -20 | while read count ip; do
         # 获取该IP最近的异常时间和原因
         local last_record=$(grep "|${ip}|" "$ANOMALY_IP_LOG" | tail -1)
@@ -795,6 +798,7 @@ show_anomaly_ip_stats() {
         local last_reason=$(echo "$last_record" | cut -d'|' -f3)
         
         printf "%-8s  %-15s  %s (%s)\n" "$count" "$ip" "$last_time" "$last_reason"
+        echo "$ip" >> "${_rank_tmp}"
         
         # 检查是否在黑名单中
         if is_in_blacklist "$ip"; then
@@ -803,6 +807,34 @@ show_anomaly_ip_stats() {
             echo -e "          ${GREEN}[在白名单中]${NC}"
         fi
     done
+
+    # 一键将上面展示的排行IP加入黑名单（永久）
+    if [ -s "${_rank_tmp}" ]; then
+        echo ""
+        echo -ne "${YELLOW}是否将以上排行IP一键加入黑名单(永久)? (y/n): ${NC}"
+        read _confirm_rank_black
+        if [[ "${_confirm_rank_black}" == "y" || "${_confirm_rank_black}" == "Y" ]]; then
+            local _added=0 _skipped=0
+            while read _ip; do
+                [ -z "${_ip}" ] && continue
+                if is_in_whitelist "${_ip}"; then
+                    echo -e "${GREEN}跳过白名单IP: ${_ip}${NC}"
+                    _skipped=$((_skipped+1))
+                    continue
+                fi
+                if is_in_blacklist "${_ip}"; then
+                    echo -e "${YELLOW}已在黑名单: ${_ip}${NC}"
+                    _skipped=$((_skipped+1))
+                    continue
+                fi
+                add_to_blacklist "${_ip}" "异常IP统计: 排行加入" 0
+                echo -e "${RED}已加入黑名单(永久): ${_ip}${NC}"
+                _added=$((_added+1))
+            done < <(sort -u "${_rank_tmp}")
+            echo -e "${CYAN}汇总: 新增 ${_added} 个IP到黑名单，跳过 ${_skipped} 个${NC}"
+        fi
+    fi
+    rm -f "${_rank_tmp}" 2>/dev/null
     
     echo ""
     echo -e "${YELLOW}最近10条异常记录:${NC}"
