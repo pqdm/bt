@@ -9,10 +9,12 @@ QQ: 314450957
 
 ## 功能特点
 - **实时监控系统状态** - 监控CPU、内存、网络连接等系统资源
+- **CPU监控增强** - 多次采样(3s平均)、每核展开、显示us/sy/wa/st并带阈值告警
 - **分析Web访问日志** - 智能分析访问日志，识别异常流量模式
 - **检测和防御CC攻击** - 自动检测并防御CC攻击，支持多种防护策略
 - **监控异常进程** - 实时监控系统进程，识别可疑和恶意进程
 - **管理黑名单和白名单** - 灵活的IP黑白名单管理，支持自动和手动管理
+- **系统异常一键拉黑** - “检测系统异常”检测到异常IP后可一键加入黑名单
 - **智能异常IP检测** - 自动统计异常IP行为，达到阈值后自动加入黑名单，支持异常IP统计分析
 - **设置防火墙规则** - 强大的防火墙管理，支持基本和高级规则配置
 - **设置WAF规则** - Web应用防火墙规则配置，保护Web应用安全
@@ -49,43 +51,30 @@ chmod +x install.sh
 mkdir -p /root/cc_modules
 
 # 下载主脚本
-echo -e "${YELLOW}下载主脚本...${NC}"
 wget https://github.com/pqdm/bt/raw/main/ding.sh -O /usr/local/bin/ding
 chmod +x /usr/local/bin/ding
 
 # 创建软链接
-echo -e "${YELLOW}创建软链接...${NC}"
 ln -sf /usr/local/bin/ding /root/cc_defense.sh
 
 # 下载配置文件
-echo -e "${YELLOW}下载配置文件...${NC}"
 wget https://github.com/pqdm/bt/raw/main/cc_config.conf -O /root/cc_config.conf
-wget https://github.com/pqdm/bt/raw/main/cc_config_bt_whitelist.conf -O /root/cc_config_bt_whitelist.conf
-wget https://github.com/pqdm/bt/raw/main/VERSION -O /root/VERSION
 
 # 下载模块文件
-echo -e "${YELLOW}下载模块文件...${NC}"
 wget https://github.com/pqdm/bt/raw/main/cc_modules/analyzer.sh -O /root/cc_modules/analyzer.sh
 wget https://github.com/pqdm/bt/raw/main/cc_modules/blacklist.sh -O /root/cc_modules/blacklist.sh
 wget https://github.com/pqdm/bt/raw/main/cc_modules/cleaner.sh -O /root/cc_modules/cleaner.sh
-wget https://github.com/pqdm/bt/raw/main/cc_modules/garbage_cleaner.sh -O /root/cc_modules/garbage_cleaner.sh
-wget https://github.com/pqdm/bt/raw/main/cc_modules/cleanup_analyzer.sh -O /root/cc_modules/cleanup_analyzer.sh
 wget https://github.com/pqdm/bt/raw/main/cc_modules/firewall.sh -O /root/cc_modules/firewall.sh
 wget https://github.com/pqdm/bt/raw/main/cc_modules/monitor.sh -O /root/cc_modules/monitor.sh
 wget https://github.com/pqdm/bt/raw/main/cc_modules/optimizer.sh -O /root/cc_modules/optimizer.sh
 wget https://github.com/pqdm/bt/raw/main/cc_modules/waf.sh -O /root/cc_modules/waf.sh
-wget https://github.com/pqdm/bt/raw/main/cc_modules/updater.sh -O /root/cc_modules/updater.sh
 
 # 设置执行权限
-echo -e "${YELLOW}设置执行权限...${NC}"
 chmod +x /root/cc_modules/*.sh
 
 # 创建黑白名单文件
 touch /root/cc_blacklist.txt
 touch /root/cc_whitelist.txt
-
-echo -e "${GREEN}宝塔面板服务器维护工具安装完成!${NC}"
-echo -e "${GREEN}现在可以通过运行 'ding' 命令来启动系统${NC}"
 ```
 
 ## 快速开始
@@ -268,7 +257,18 @@ chmod +x uninstall.sh
 
 ## 更新日志
 
-### v2.1.0 (2025.09.06)
+### v2.1.4 (2025.09.06)
+- 新增：主页新增 30. 自动检测，可配置检测间隔与是否自动加入黑名单（永久），自动模式下不再弹出一键拉黑提示
+- 统一：所有加入黑名单默认永久封禁
+
+### v2.1.3 (2025.09.06)
+- CPU监控增强：新增3秒多次采样、每核展开、输出us/sy/wa/st/id，并含告警阈值（used≥85%、wa≥10%、st≥10%）
+- 系统异常一键拉黑：在“检测系统异常”中，可对本次检测出的异常IP一键加入黑名单（默认2小时），自动跳过白名单/已在黑名单IP
+- 异常收集优化：连接数异常、失败登录异常统一汇总并展示
+- 更新机制完善：更新时同步根目录文件（`VERSION`、`cc_config.conf`、`cc_config_bt_whitelist.conf`）和所有模块，确保版本一致
+- 建议：安装`sysstat`以启用更精确的每核统计（`mpstat`）
+
+### v2.1.0 (2025.01.XX)
 - **新增功能** - 添加系统垃圾清理功能，支持清理临时文件、日志文件、包管理器缓存等
 - **深度清理** - 新增深度清理系统功能，支持清理Docker文件、数据库日志、编译缓存、网站缓存等
 - **智能黑名单** - 新增异常IP自动统计功能，IP异常达到5次以上自动加入黑名单

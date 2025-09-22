@@ -55,12 +55,12 @@ log_message() {
 show_header() {
     clear
     echo -e "${CYAN}╔══════════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${CYAN}║               宝塔面板服务器维护工具 v$VERSION                 ║${NC}"
+    echo -e "${CYAN}║               宝塔面板服务器维护工具 v$VERSION               ║${NC}"
     echo -e "${CYAN}║            BT Panel Server Maintenance Tool                  ║${NC}"
     echo -e "${CYAN}║                                                              ║${NC}"
-    echo -e "${CYAN}║                                                              ║${NC}"
-    echo -e "${CYAN}║ 作者: 咸鱼-神秘人  微信:dingyanan2008   QQ:314450957          ║${NC}"
-    echo -e "${CYAN}║                                                              ║${NC}"
+    echo -e "${CYAN}║  作者: 咸鱼神秘人                                            ║${NC}"
+    echo -e "${CYAN}║  微信: dingyanan2008                                         ║${NC}"
+    echo -e "${CYAN}║  QQ: 314450957                                               ║${NC}"
     echo -e "${CYAN}╚══════════════════════════════════════════════════════════════╝${NC}"
     echo ""
 }
@@ -91,7 +91,8 @@ show_menu() {
     echo -e "${GREEN}◎ 系统管理${NC}"
     echo -e "${CYAN}25.${NC} 配置选项                   ${CYAN}27.${NC} 检查更新"
     echo -e "${CYAN}26.${NC} 关于                       ${CYAN}28.${NC} 卸载工具"
-    echo -e "${CYAN}29.${NC} 异常IP统计                ${CYAN}0.${NC} 退出"
+    echo -e "${CYAN}29.${NC} 异常IP统计                ${CYAN}30.${NC} 自动检测"
+    echo -e "${CYAN}0.${NC} 退出"
     echo "=================================================================="
     echo -ne "${YELLOW}请输入选择: ${NC}"
 }
@@ -515,6 +516,27 @@ handle_menu() {
             esac
             echo -e "${YELLOW}按任意键继续...${NC}"
             read -n 1
+            ;;
+        30)
+            # 自动检测（循环执行检测系统异常）
+            echo -ne "${YELLOW}请输入检测间隔(分钟)，默认120: ${NC}"
+            read _interval_min
+            if ! echo "${_interval_min}" | grep -qE '^[0-9]+$'; then
+                _interval_min=120
+            fi
+            echo -ne "${YELLOW}是否自动加入黑名单(永久)? (y/n，默认y): ${NC}"
+            read _auto_black
+            if [[ "${_auto_black}" == "n" || "${_auto_black}" == "N" ]]; then
+                AUTO_BLACKLIST=false
+            else
+                AUTO_BLACKLIST=true
+            fi
+            NON_INTERACTIVE=true
+            echo -e "${GREEN}开始自动检测。按 Ctrl+C 停止。间隔: ${_interval_min} 分钟，自动拉黑: ${AUTO_BLACKLIST}${NC}"
+            while true; do
+                detect_system_anomalies
+                sleep $(( _interval_min * 60 ))
+            done
             ;;
         0)
             # 退出
