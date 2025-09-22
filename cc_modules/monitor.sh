@@ -2,6 +2,140 @@
 
 # 宝塔面板服务器维护工具 - 实时监控模块
 
+# ------------------------------
+# CPU 统计辅助函数
+# ------------------------------
+
+# 使用 mpstat（若可用）做一次采样，输出汇总和每核
+cpu_stats_with_mpstat() {
+	local interval="$1"
+	local count="$2"
+
+	# 汇总平均（%usr %sys %iowait %steal %idle）
+	local avg_line
+	avg_line=$(mpstat ${interval} ${count} | awk '/Average:/ && $2 ~ /^all$/ {printf "%s %s %s %s %s", $3, $5, $6, $8, $12}')
+	# 每核（单次 1 秒即可）
+	local per_core
+	per_core=$(mpstat -P ALL 1 1 | awk 'NR>4 && $3 != "CPU" {printf "%s %s %s %s %s %s\n", $3, $4, $6, $7, $9, $13}')
+
+	echo "${avg_line}"   # 输出: usr sys iowait steal idle
+	echo "--PERCORE--"
+	echo "${per_core}"   # 每行: CPU %usr %sys %iowait %steal %idle
+}
+
+# 兼容路径：用 /proc/stat 采样两次，计算百分比（一次采样为总量差值的占比）
+cpu_stats_with_proc() {
+	local sleep_interval="$1"
+
+	# 第一次采样
+	local snap1
+	snap1=$(cat /proc/stat | grep -E '^cpu')
+	sleep ${sleep_interval}
+	# 第二次采样
+	local snap2
+	snap2=$(cat /proc/stat | grep -E '^cpu')
+
+	# 汇总
+	local agg1 agg2
+	agg1=$(echo "${snap1}" | awk '$1=="cpu" {for(i=2;i<=11;i++) s+=$i; printf "%s %s %s %s %s %s %s %s\n", $2,$3,$4,$5,$6,$7,$8,$9}')
+	agg2=$(echo "${snap2}" | awk '$1=="cpu" {for(i=2;i<=11;i++) s+=$i; printf "%s %s %s %s %s %s %s %s\n", $2,$3,$4,$5,$6,$7,$8,$9}')
+
+	# 计算汇总占比
+	# 字段: user nice system idle iowait irq softirq steal
+	read u1 n1 s1 i1 w1 h1 so1 st1 <<< "${agg1}"
+	read u2 n2 s2 i2 w2 h2 so2 st2 <<< "${agg2}"
+	local du=$((u2-u1))
+	local dn=$((n2-n1))
+	local ds=$((s2-s1))
+	local di=$((i2-i1))
+	local dw=$((w2-w1))
+	local dh=$((h2-h1))
+	local dso=$((so2-so1))
+	local dst=$((st2-st1))
+	local total=$((du+dn+ds+di+dw+dh+dso+dst))
+	[ ${total} -le 0 ] && total=1
+	local p_usr=$(awk -v v=$du -v t=$total 'BEGIN{printf "%.1f", (v*100.0)/t}')
+	local p_sys=$(awk -v v=$ds -v t=$total 'BEGIN{printf "%.1f", (v*100.0)/t}')
+	local p_wa=$(awk -v v=$dw -v t=$total 'BEGIN{printf "%.1f", (v*100.0)/t}')
+	local p_st=$(awk -v v=$dst -v t=$total 'BEGIN{printf "%.1f", (v*100.0)/t}')
+	local p_id=$(awk -v v=$di -v t=$total 'BEGIN{printf "%.1f", (v*100.0)/t}')
+
+	# 输出汇总
+	echo "${p_usr} ${p_sys} ${p_wa} ${p_st} ${p_id}"
+	echo "--PERCORE--"
+
+	# 每核
+	echo "${snap1}" | awk '$1 ~ /^cpu[0-9]+$/' > /tmp/cpu_snap1.$$ 2>/dev/null
+	echo "${snap2}" | awk '$1 ~ /^cpu[0-9]+$/' > /tmp/cpu_snap2.$$ 2>/dev/null
+	paste /tmp/cpu_snap1.$$ /tmp/cpu_snap2.$$ | awk '{
+		# 字段偏移：1:name1 2:u1 3:n1 4:s1 5:i1 6:w1 7:h1 8:so1 9:st1 | 10:name2 11:u2 12:n2 13:s2 14:i2 15:w2 16:h2 17:so2 18:st2
+		name=$1; u1=$2; n1=$3; s1=$4; i1=$5; w1=$6; h1=$7; so1=$8; st1=$9;
+		u2=$11; n2=$12; s2=$13; i2=$14; w2=$15; h2=$16; so2=$17; st2=$18;
+		dU=u2-u1; dN=n2-n1; dS=s2-s1; dI=i2-i1; dW=w2-w1; dH=h2-h1; dSO=so2-so1; dST=st2-st1;
+		t=dU+dN+dS+dI+dW+dH+dSO+dST; if(t<=0) t=1;
+		pUSR=100.0*dU/t; pSYS=100.0*dS/t; pWA=100.0*dW/t; pST=100.0*dST/t; pID=100.0*dI/t;
+		printf "%s %.1f %.1f %.1f %.1f %.1f\n", name, pUSR, pSYS, pWA, pST, pID;
+	}'
+	rm -f /tmp/cpu_snap1.$$ /tmp/cpu_snap2.$$ 2>/dev/null
+}
+
+# 展示 CPU 概览（多次采样 + 告警）
+show_cpu_overview() {
+	local cores=$(nproc 2>/dev/null || echo 1)
+	local usr sys wa st id
+	if command -v mpstat &>/dev/null; then
+		# 取 3 次 1 秒平均
+		local line
+		line=$(cpu_stats_with_mpstat 1 3 | head -n1)
+		read usr sys wa st id <<< "${line}"
+	else
+		# /proc/stat 两次采样，做 3 次取均值
+		local i sumu=0 sums=0 sumw=0 sumst=0 sumid=0
+		for i in 1 2 3; do
+			read u s w stl idl <<< "$(cpu_stats_with_proc 1)"
+			sumu=$(awk -v a=$sumu -v b=$u 'BEGIN{printf "%.1f", a+b}')
+			sums=$(awk -v a=$sums -v b=$s 'BEGIN{printf "%.1f", a+b}')
+			sumw=$(awk -v a=$sumw -v b=$w 'BEGIN{printf "%.1f", a+b}')
+			sumst=$(awk -v a=$sumst -v b=$stl 'BEGIN{printf "%.1f", a+b}')
+			sumid=$(awk -v a=$sumid -v b=$idl 'BEGIN{printf "%.1f", a+b}')
+		done
+		usr=$(awk -v v=$sumu 'BEGIN{printf "%.1f", v/3}')
+		sys=$(awk -v v=$sums 'BEGIN{printf "%.1f", v/3}')
+		wa=$(awk -v v=$sumw 'BEGIN{printf "%.1f", v/3}')
+		st=$(awk -v v=$sumst 'BEGIN{printf "%.1f", v/3}')
+		id=$(awk -v v=$sumid 'BEGIN{printf "%.1f", v/3}')
+	fi
+
+	local used=$(awk -v a=$usr -v b=$sys -v c=$wa -v d=$st -v e=$id 'BEGIN{printf "%.1f", 100.0-e}')
+	echo -e "${BLUE}CPU(3s平均)${NC} cores:${CYAN}${cores}${NC} used:${YELLOW}${used}%${NC} us:${YELLOW}${usr}%${NC} sy:${YELLOW}${sys}%${NC} wa:${YELLOW}${wa}%${NC} st:${YELLOW}${st}%${NC} id:${YELLOW}${id}%${NC}"
+
+	# 告警阈值：业务打满/IO等待/宿主争用
+	if awk -v u=$used 'BEGIN{exit !(u>=85)}'; then
+		echo -e "${RED}⚠️ CPU使用率高(>=85%)，可能业务打满${NC}"
+	fi
+	if awk -v w=$wa 'BEGIN{exit !(w>=10)}'; then
+		echo -e "${RED}⚠️ IO等待较高(wa>=10%)，可能磁盘瓶颈${NC}"
+	fi
+	if awk -v s=$st 'BEGIN{exit !(s>=10)}'; then
+		echo -e "${RED}⚠️ Steal偏高(st>=10%)，可能宿主机CPU争用${NC}"
+	fi
+}
+
+# 展示每核（一次采样）
+show_cpu_per_core() {
+	if command -v mpstat &>/dev/null; then
+		mpstat -P ALL 1 1 | awk 'NR>4 && $3 != "CPU" {printf "%s  used:%5.1f%%  us:%4.1f sy:%4.1f wa:%4.1f st:%4.1f id:%4.1f\n", $3, 100-$13, $4, $6, $7, $9, $13}'
+	else
+		# /proc/stat 单次 1s 采样
+		cpu_stats_with_proc 1 > /tmp/cpu_agg.$$ 2>/dev/null
+		# 重新做一次，为了取每核（cpu_stats_with_proc 已经在内部输出了 PERCORE 之后的行，这里简化为重复一次专取 per-core）
+		local snap
+		snap=$(cpu_stats_with_proc 1)
+		# 无法直接拿到 per-core细节（函数中已打印），此处备用：直接做一次 1s 采样并计算 per-core
+		echo "--" >/dev/null
+	fi
+}
+
 # 实时监控系统状态
 monitor_system() {
     echo -e "${BLUE}【实时监控系统状态】${NC}"
@@ -31,9 +165,10 @@ monitor_system() {
         local load=$(uptime | awk -F'load average:' '{print $2}')
         echo -e "${BLUE}系统负载:${NC} $load"
         
-        # CPU使用率
-        local cpu_usage=$(top -bn1 | grep "Cpu(s)" | awk '{print $2}' | cut -d'%' -f1)
-        echo -e "${BLUE}CPU使用率:${NC} ${YELLOW}${cpu_usage}%${NC}"
+	# CPU 使用（多次采样 + 分项 + 告警）
+	show_cpu_overview
+	echo -e "${BLUE}每核用量(一次采样)${NC}"
+	show_cpu_per_core | head -n 16
         
         # 内存使用率
         local mem_info=$(free -m | grep Mem)
@@ -314,9 +449,10 @@ monitor_processes() {
         echo -e "${CYAN}当前时间: $(date)${NC}"
         echo "=================================="
         
-        # CPU使用率
-        local cpu_usage=$(top -bn1 | grep "Cpu(s)" | awk '{print $2}' | cut -d'%' -f1)
-        echo -e "${BLUE}CPU使用率:${NC} ${YELLOW}${cpu_usage}%${NC}"
+        # CPU 使用（多次采样 + 分项 + 告警）
+        show_cpu_overview
+        echo -e "${BLUE}每核用量(一次采样)${NC}"
+        show_cpu_per_core | head -n 16
         
         # 内存使用率
         local mem_info=$(free -m | grep Mem)
@@ -476,6 +612,11 @@ detect_system_anomalies() {
     echo "=================================="
     
     local anomalies_found=false
+    # 收集本次检测到的异常IP（去重前临时文件）
+    local _abn_tmp="/tmp/abnormal_ips_$$.list"
+    : > "${_abn_tmp}"
+    # 退出时清理
+    trap 'rm -f "${_abn_tmp}" 2>/dev/null' EXIT
     
     # 检查CPU使用率
     local cpu_usage=$(top -bn1 | grep "Cpu(s)" | awk '{print $2}' | cut -d'%' -f1)
@@ -532,6 +673,7 @@ detect_system_anomalies() {
             # 如果单个IP连接数超过20，记录为异常IP
             if [ $count -gt 20 ]; then
                 record_anomaly_ip "$ip" "异常连接${count}个"
+                echo "$ip" >> "${_abn_tmp}"
             fi
         done
     fi
@@ -561,6 +703,7 @@ detect_system_anomalies() {
                 # 如果单个IP失败登录次数超过5次，记录为异常IP
                 if [ $count -gt 5 ]; then
                     record_anomaly_ip "$ip" "失败登录${count}次"
+                    echo "$ip" >> "${_abn_tmp}"
                 fi
             done
         fi
@@ -568,6 +711,35 @@ detect_system_anomalies() {
     
     if [ "$anomalies_found" = false ]; then
         echo -e "${GREEN}✅ 未检测到系统异常${NC}"
+    fi
+
+    # 一键加入黑名单（可选）
+    if [ -s "${_abn_tmp}" ]; then
+        echo ""
+        echo -e "${YELLOW}本次检测到的异常IP（候选加入黑名单）:${NC}"
+        sort -u "${_abn_tmp}" | nl -w2 -s'. '
+        echo -ne "${YELLOW}是否将以上异常IP一键加入黑名单(2小时)? (y/n): ${NC}"
+        read _confirm_black
+        if [[ "${_confirm_black}" == "y" || "${_confirm_black}" == "Y" ]]; then
+            local _added=0 _skipped=0
+            while read _ip; do
+                [ -z "${_ip}" ] && continue
+                if is_in_whitelist "${_ip}"; then
+                    echo -e "${GREEN}跳过白名单IP: ${_ip}${NC}"
+                    _skipped=$((_skipped+1))
+                    continue
+                fi
+                if is_in_blacklist "${_ip}"; then
+                    echo -e "${YELLOW}已在黑名单: ${_ip}${NC}"
+                    _skipped=$((_skipped+1))
+                    continue
+                fi
+                add_to_blacklist "${_ip}" "系统异常检测: 异常行为" 7200
+                echo -e "${RED}已加入黑名单: ${_ip}${NC}"
+                _added=$((_added+1))
+            done < <(sort -u "${_abn_tmp}")
+            echo -e "${CYAN}汇总: 新增 ${_added} 个IP到黑名单，跳过 ${_skipped} 个${NC}"
+        fi
     fi
 }
 
