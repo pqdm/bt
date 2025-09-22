@@ -519,11 +519,12 @@ handle_menu() {
             ;;
         30)
             # 自动检测（循环执行检测系统异常）
-            echo -ne "${YELLOW}请输入检测间隔(分钟)，默认120: ${NC}"
-            read _interval_min
-            if ! echo "${_interval_min}" | grep -qE '^[0-9]+$'; then
-                _interval_min=120
+            echo -ne "${YELLOW}请输入检测间隔(小时)，默认2: ${NC}"
+            read _interval_hr
+            if ! echo "${_interval_hr}" | grep -qE '^[0-9]+$'; then
+                _interval_hr=2
             fi
+            _interval_min=$(( _interval_hr * 60 ))
             echo -ne "${YELLOW}是否自动加入黑名单(永久)? (y/n，默认y): ${NC}"
             read _auto_black
             if [[ "${_auto_black}" == "n" || "${_auto_black}" == "N" ]]; then
@@ -531,11 +532,41 @@ handle_menu() {
             else
                 AUTO_BLACKLIST=true
             fi
+            echo -ne "${YELLOW}是否创建定时任务(SSH关闭后仍自动检测)? (y/n，默认y): ${NC}"
+            read _create_cron
+            if [[ "${_create_cron}" != "n" && "${_create_cron}" != "N" ]]; then
+                # 生成执行脚本
+                cat > /root/cc_cron_detect.sh <<'EOF'
+#!/bin/bash
+[ -f /root/cc_config.conf ] && . /root/cc_config.conf
+. /root/cc_modules/blacklist.sh
+. /root/cc_modules/monitor.sh
+AUTO_BLACKLIST=true
+NON_INTERACTIVE=true
+detect_system_anomalies
+EOF
+                chmod +x /root/cc_cron_detect.sh
+
+                # 生成cron表达式
+                _cron_expr=""
+                if [ ${_interval_min} -ge 60 ] && [ $(( _interval_min % 60 )) -eq 0 ]; then
+                    _hours=$(( _interval_min / 60 ))
+                    _cron_expr="0 */${_hours} * * *"
+                else
+                    _cron_expr="*/${_interval_min} * * * *"
+                fi
+
+                # 写入crontab
+                (crontab -l 2>/dev/null; echo "${_cron_expr} /root/cc_cron_detect.sh >> /var/log/cc_cron_detect.log 2>&1") | crontab -
+                echo -e "${GREEN}✅ 已创建定时任务：${_cron_expr}${NC}"
+                echo -e "${CYAN}日志: /var/log/cc_cron_detect.log${NC}"
+            fi
+
             NON_INTERACTIVE=true
-            echo -e "${GREEN}开始自动检测。按 Ctrl+C 停止。间隔: ${_interval_min} 分钟，自动拉黑: ${AUTO_BLACKLIST}${NC}"
+            echo -e "${GREEN}开始自动检测。按 Ctrl+C 停止。间隔: ${_interval_hr} 小时，自动拉黑: ${AUTO_BLACKLIST}${NC}"
             while true; do
                 detect_system_anomalies
-                sleep $(( _interval_min * 60 ))
+                sleep $(( _interval_hr * 3600 ))
             done
             ;;
         0)
